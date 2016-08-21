@@ -1,4 +1,4 @@
-# music.payamyousefi.com
+# [music.payamyousefi.com](http://music.payamyousefi.com/)
 This is a small web app that connects to the Last.fm API and outputs top artists in a tiled layout + design. Users can input their own usernames to redirect to a shareable and custom URL for their own personal top artists page.
 
 ## Live Tool
