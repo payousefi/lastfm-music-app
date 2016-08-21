@@ -40,7 +40,7 @@
   <title>Music &mdash; <?php echo $title; ?></title>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
-  <meta name="description" content="Curious about my taste in music? This month I'm liking...">
+  <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? This past month&rsquo;s top artists are&hellip;">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
 	<!-- SEO/Social -->
@@ -49,6 +49,8 @@
 
   <!-- Stylesheets -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Karla:400,700|Lobster" type="text/css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" type="text/css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/jquery.jssocials/1.3.1/jssocials.css" type="text/css" />
   <link rel="stylesheet" href="stylesheets/reset.css" type="text/css">
   <link rel="stylesheet" href="stylesheets/main.css" type="text/css">
 
@@ -56,11 +58,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/pace.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-color/2.1.2/jquery.color.min.js" type="text/javascript"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery.jssocials/1.3.1/jssocials.min.js"></script>
   <script src="scripts/app.js" type="text/javascript"></script>
 
 </head>
 
 <body>
+
+  <!-- social links -->
+  <div class="social"></div>
 
   <!-- main wrapper -->
 	<div id="wrap">

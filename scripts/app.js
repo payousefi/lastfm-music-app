@@ -70,6 +70,9 @@ $(document).ready(function() {
   var app = new MusicApp(username, "***REMOVED***", "#wrap", ".content");
   app.go();
 
+  // Share
+  $(".social").jsSocials({shareIn: "popup",showLabel: false,showCount: false,shares: ["facebook", "email", "twitter", "googleplus"]});
+
   /* Form functionality */
   $("#username").keypress(function(event) {
     var keycode = (event.keyCode ? event.keyCode : event.which);
