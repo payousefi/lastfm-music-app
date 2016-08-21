@@ -192,20 +192,6 @@ input[type="text"]:focus {
     }
 }
 
-/*  Footer
------------------------------------------------------ */
-footer {
-    padding: 30px 15px;
-    margin: 30px -30px -30px;
-    background: #000;
-    background: rgba(0,0,0,.45);
-    text-align: center;
-}
-
-footer p {
-    font-size: 13px;
-}
-
 /*  Transitions
 ----------------------------------------------------- */
 a,.title,.dark,input {
@@ -240,4 +226,44 @@ a,.title,.dark,input {
     right: 100%;
     width: 100%;
     height: 2px;
+}
+
+/*  Social icons
+----------------------------------------------------- */
+.social {
+  font-size: 14px;
+  position: absolute;
+  top:10px;
+  right:20px;
+  text-align: right;
+}
+@media screen and (max-width: 800px) {
+    /* make room for social icons */
+    #wrap {
+        padding-top:60px;
+    }
+}
+.jssocials-share-link {
+  padding: 5px;
+  color: #fff;
+  -webkit-transition: background 200ms ease-in-out;
+          transition: background 200ms ease-in-out;
+}
+.jssocials-share-link:hover, .jssocials-share-link:focus, .jssocials-share-link:active {
+    color: #fff;
+}
+
+
+/*  Footer
+----------------------------------------------------- */
+footer {
+    padding: 30px 15px;
+    margin: 30px -30px -30px;
+    background: #000;
+    background: rgba(0,0,0,.45);
+    text-align: center;
+}
+
+footer p {
+    font-size: 13px;
 }
