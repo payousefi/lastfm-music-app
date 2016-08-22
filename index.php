@@ -4,14 +4,13 @@
 
   // Redirect to proper subdomain if in wrong directory
   if(strstr($_SERVER['REQUEST_URI'],"/music/")){
-  	$current = str_replace($_SERVER["REQUEST_URI"], "/music/", "");
-  	header('location: http://music.payamyousefi.com/'.$current);
+    $current = str_replace($_SERVER["REQUEST_URI"], "/music/", "");
+    header('location: http://music.payamyousefi.com/'.$current);
   }
 
   // Redirect to base / URL
   if(strstr($_SERVER['REQUEST_URI'],"index.php")){
-  //	$blah = str_replace($_SERVER["REQUEST_URI"], "/music/", "");
-  	header('location: http://music.payamyousefi.com/');
+    header('location: http://music.payamyousefi.com/');
   }
 
   // Parse URL arguments
@@ -41,10 +40,10 @@
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
   <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? This past month&rsquo;s top artists are&hellip;">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-	<!-- SEO/Social -->
-	<meta property="og:image" content="img/screenshot.jpg" />
+  <!-- SEO/Social -->
+  <meta property="og:image" content="img/screenshot.jpg" />
   <link href="favicon.ico" rel="icon">
 
   <!-- Stylesheets -->
@@ -69,28 +68,28 @@
   <div class="social"></div>
 
   <!-- main wrapper -->
-	<div id="wrap">
+  <div id="wrap">
 
-		<h1><a href="http://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
-		<h2>
-  		Curious about <?php echo $whos; ?> taste in music?<br/>
-  		This past month&rsquo;s top artists are&hellip;
+    <h1><a href="http://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
+    <h2>
+      Curious about <?php echo $whos; ?> taste in music?<br/>
+      This past month&rsquo;s top artists are&hellip;
     </h2>
 
     <hr/>
 
-		<p>Have your own <a href="http://last.fm/">last.fm</a> account? Type in your username: &nbsp;<input type="text" id="username" value=""/>&nbsp; and press <b>enter</b>.</p>
+    <p>Have your own <a href="http://last.fm/">last.fm</a> account? Type in your username: &nbsp;<input type="text" id="username" value=""/>&nbsp; and press <b>enter</b>.</p>
 
     <hr/>
 
     <!-- load the music data! -->
-		<div class="content" style="display:none;"></div>
+    <div class="content" style="display:none;"></div>
 
-  	<footer>
-  		<p>{ designed by <a href="http://payamyousefi.com/">Payam Yousefi</a> &middot; &middot; &middot; monthly play count + image data collected via <a href="http://last.fm/">Last.fm</a> API }</p>
-  	</footer>
+    <footer>
+      <p>{ designed by <a href="http://payamyousefi.com/">Payam Yousefi</a> &middot; &middot; &middot; monthly play count + image data collected via <a href="http://last.fm/">Last.fm</a> API }</p>
+    </footer>
 
-	</div>
+  </div>
 
   <!-- analytics -->
   <script>
