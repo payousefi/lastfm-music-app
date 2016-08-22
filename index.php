@@ -69,12 +69,14 @@
 
   <!-- main wrapper -->
   <div id="wrap">
-
-    <h1><a href="http://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
-    <h2>
-      Curious about <?php echo $whos; ?> taste in music?<br/>
-      This past month&rsquo;s top artists are&hellip;
-    </h2>
+    
+    <header>
+      <h1><a href="http://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
+      <h2>
+        Curious about <?php echo $whos; ?> taste in music?<br/>
+        This past month&rsquo;s top artists are&hellip;
+      </h2>
+    </header>
 
     <hr/>
 
