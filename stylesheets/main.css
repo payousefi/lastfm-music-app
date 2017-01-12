@@ -158,6 +158,10 @@ hr {
     .title {
         opacity: 1;
     }
+
+    .artist .dark {
+        opacity: .35;
+    }
 }
 
 /*  Form fields
