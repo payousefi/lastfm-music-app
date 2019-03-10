@@ -5,12 +5,12 @@
   // Redirect to proper subdomain if in wrong directory
   if(strstr($_SERVER['REQUEST_URI'],"/music/")){
     $current = str_replace($_SERVER["REQUEST_URI"], "/music/", "");
-    header('location: http://music.payamyousefi.com/'.$current);
+    header('location: https://music.payamyousefi.com/'.$current);
   }
 
   // Redirect to base / URL
   if(strstr($_SERVER['REQUEST_URI'],"index.php")){
-    header('location: http://music.payamyousefi.com/');
+    header('location: https://music.payamyousefi.com/');
   }
 
   // Parse URL arguments
@@ -28,7 +28,7 @@
   } else { // Custom user request
 
     $title = $root[0];
-    $whos = "<a href='http://last.fm/user/".$root[0]."'>".$root[0]."</a>'s";
+    $whos = "<a href='https://last.fm/user/".$root[0]."'>".$root[0]."</a>'s";
 
   }
 
@@ -71,7 +71,7 @@
   <div id="wrap">
     
     <header>
-      <h1><a href="http://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
+      <h1><a href="https://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
       <h2>
         Curious about <?php echo $whos; ?> taste in music?<br/>
         This past month&rsquo;s top artists are&hellip;
@@ -80,7 +80,7 @@
 
     <hr/>
 
-    <p>Have your own <a href="http://last.fm/">last.fm</a> account? Type in your username: &nbsp;<input type="text" id="username" value=""/>&nbsp; and press <b>enter</b>.</p>
+    <p>Have your own <a href="https://last.fm/">last.fm</a> account? Type in your username: &nbsp;<input type="text" id="username" value=""/>&nbsp; and press <b>enter</b>.</p>
 
     <hr/>
 
@@ -88,7 +88,7 @@
     <div class="content" style="display:none;"></div>
 
     <footer>
-      <p>{ designed by <a href="http://payamyousefi.com/">Payam Yousefi</a> &middot; &middot; &middot; monthly play count + image data collected via <a href="http://last.fm/">Last.fm</a> API }</p>
+      <p>{ designed by <a href="https://payamyousefi.com/">Payam Yousefi</a> &middot; &middot; &middot; monthly play count + image data collected via <a href="https://last.fm/">Last.fm</a> API }</p>
     </footer>
 
   </div>

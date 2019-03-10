@@ -14,7 +14,7 @@ var MusicApp = function(user, key, wrap, content){
 
   // Make the last.fm API request
   this.go = function() {
-    var baseURL = "http://ws.audioscrobbler.com/2.0/";
+    var baseURL = "https://ws.audioscrobbler.com/2.0/";
     var method = "user.getTopArtists";
     var limit = 12;
     var period = "1month"; // Last 30 days
@@ -87,7 +87,7 @@ $(document).ready(function() {
   $("#username").keypress(function(event) {
     var keycode = (event.keyCode ? event.keyCode : event.which);
     if (keycode == "13") { // on enter/return, relocate to correct endpoint
-        window.location = "http://music.payamyousefi.com/" + $("#username").val();
+        window.location = "https://music.payamyousefi.com/" + $("#username").val();
     }
   });
 
