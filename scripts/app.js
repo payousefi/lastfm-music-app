@@ -80,7 +80,7 @@ $(document).ready(function() {
     shareIn: "popup",
     showLabel: false,
     showCount: false,
-    shares: ["facebook", "email", "twitter", "googleplus"]
+    shares: ["email", "twitter", "facebook", "messenger"]
   });
 
   /* Form functionality */
