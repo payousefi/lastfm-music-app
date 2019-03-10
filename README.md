@@ -1,8 +1,8 @@
-# [music.payamyousefi.com](http://music.payamyousefi.com/)
+# [music.payamyousefi.com](https://music.payamyousefi.com/)
 This is a small web app that connects to the Last.fm API and outputs top artists in a tiled layout + design. Users can input their own usernames to redirect to a shareable and custom URL for their own personal top artists page.
 
 ## Live Tool
-A live version of the tool can be used [here](http://music.payamyousefi.com/).
+A live version of the tool can be used [here](https://music.payamyousefi.com/).
 
 ## Inspiration
 I am asked “What kind of music do you like?” all too often. It’s the kind of question I can never answer to a satisfactory extent, so I decided to create a solution by aesthetically and dynamically presenting my recent music listening history.
