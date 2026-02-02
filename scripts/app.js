@@ -9,8 +9,36 @@
     defaultUsername: 'solitude12',
     artistLimit: 12,
     period: '1month',
-    imageRequestDelay: 1000, // Discogs rate limit: 60/min = 1 per second
     tileSize: 300 // Tile size in pixels
+  };
+
+  // Discogs rate limiter - adaptive delay based on remaining requests from headers
+  // Discogs allows 60 requests/minute. We adjust speed based on how many are left.
+  const discogsRateLimiter = {
+    remaining: 60,
+    
+    async waitIfNeeded() {
+      // Adaptive delay: go faster when we have plenty, slower when running low
+      // remaining > 30: 500ms (fast)
+      // remaining 10-30: 1000ms (moderate)
+      // remaining < 10: 2000ms (slow, conserve)
+      let delay;
+      if (this.remaining > 30) {
+        delay = 500;
+      } else if (this.remaining > 10) {
+        delay = 1000;
+      } else {
+        delay = 2000;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+    },
+    
+    updateFromHeaders(headers) {
+      const remaining = headers.get('X-Discogs-Ratelimit-Remaining');
+      if (remaining !== null) {
+        this.remaining = parseInt(remaining, 10);
+      }
+    }
   };
 
   // DOM Elements
@@ -230,6 +258,7 @@
 
   /**
    * Fetch artist image from Discogs API using verified artist ID
+   * Uses rate limiter to respect API limits while maximizing throughput
    * Optimizes for images at least 3x tile size (900px) for retina displays
    */
   async function fetchDiscogsImageById(discogsId) {
@@ -239,6 +268,9 @@
     
     const MIN_SIZE = CONFIG.tileSize * 3; // 900px for retina displays
     
+    // Wait if rate limited
+    await discogsRateLimiter.waitIfNeeded();
+    
     try {
       const url = `https://api.discogs.com/artists/${discogsId}?key=${CONFIG.discogsKey}&secret=${CONFIG.discogsSecret}`;
       const response = await fetch(url, {
@@ -246,6 +278,9 @@
           'User-Agent': 'MusicApp/1.0 +https://music.payamyousefi.com'
         }
       });
+      
+      // Update rate limiter from response headers
+      discogsRateLimiter.updateFromHeaders(response.headers);
       
       if (!response.ok) {
         return null;
@@ -461,7 +496,7 @@
     const mbDataMap = await prefetchMusicBrainzData(artists);
     console.log('MusicBrainz prefetch complete');
     
-    // Phase 2: Fetch images in diagonal order (Discogs rate-limited)
+    // Phase 2: Fetch images in diagonal order (rate limiting handled by discogsRateLimiter)
     for (let i = 0; i < diagonalOrder.length; i++) {
       const { artist, originalIndex, diagonal } = diagonalOrder[i];
       const mbData = mbDataMap[artist.name];
@@ -469,12 +504,7 @@
       // Mark tile as actively loading (pulsing star)
       setTileLoadingActive(artist.name);
       
-      // Only delay if we have a Discogs ID to fetch (rate-limited)
-      // TheAudioDB fallback has no rate limit
-      if (i > 0 && mbData && mbData.discogsId) {
-        await new Promise(resolve => setTimeout(resolve, CONFIG.imageRequestDelay));
-      }
-      
+      // Rate limiting is handled inside fetchDiscogsImageById via discogsRateLimiter
       const imageUrl = await fetchArtistImageWithData(artist.name, mbData);
       const result = await prepareTileImage(artist.name, imageUrl);
       
@@ -530,6 +560,28 @@
   }
 
   /**
+   * Show/hide the rate limit note with delay before hiding
+   */
+  function showRateLimitNote(show) {
+    const note = document.querySelector('.rate-limit-note');
+    if (!note) return;
+    
+    if (show) {
+      note.classList.remove('fading');
+      note.classList.add('visible');
+    } else {
+      // Add delay before hiding to allow users to finish reading
+      setTimeout(() => {
+        note.classList.add('fading');
+        // After fade animation completes, hide completely
+        setTimeout(() => {
+          note.classList.remove('visible', 'fading');
+        }, 300);
+      }, 3000); // 3 second delay before starting fade
+    }
+  }
+
+  /**
    * Render artist tiles with accessibility support
    */
   function renderArtists(artists) {
@@ -547,7 +599,13 @@
     contentEl.innerHTML = `<h2 class="visually-hidden">Top ${artists.length} artists this month</h2>` + tiles.join('');
     slideDown(contentEl, 1000);
     
-    fetchAllArtistImages(artists);
+    // Show rate limit note while loading images
+    showRateLimitNote(true);
+    
+    fetchAllArtistImages(artists).then(() => {
+      // Hide rate limit note when all images are loaded
+      showRateLimitNote(false);
+    });
     animateBackgroundColor(generateRandomColor());
   }
 
