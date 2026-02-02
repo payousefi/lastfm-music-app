@@ -52,13 +52,34 @@
   }
 
   /**
+   * Update document title and meta description to match SEO
+   */
+  function updateDocumentMeta(username) {
+    const isDefault = username === CONFIG.defaultUsername;
+    const titleName = isDefault ? 'Payam Yousefi' : sanitize(username);
+    const whosText = isDefault ? 'my' : `${sanitize(username)}'s`;
+    
+    // Update title
+    document.title = `Music — ${titleName}`;
+    
+    // Update meta description
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', `Curious about ${whosText} taste in music? This past month's top artists are…`);
+    }
+  }
+
+  /**
    * Update the header subtitle with the current username
    */
   function updateHeaderSubtitle(username) {
+    // Update document title and meta description to match SEO
+    updateDocumentMeta(username);
+    
     if (headerSubtitle) {
       const isDefault = username === CONFIG.defaultUsername;
-      const whosText = isDefault 
-        ? 'my' 
+      const whosText = isDefault
+        ? 'my'
         : `<a href="https://last.fm/user/${encodeURIComponent(username)}" target="_blank" rel="noopener noreferrer">${sanitize(username)}</a>'s`;
       headerSubtitle.innerHTML = `Curious about ${whosText} taste in music?<br>This past month's top artists are…`;
     }
@@ -509,18 +530,21 @@
   }
 
   /**
-   * Render artist tiles
+   * Render artist tiles with accessibility support
    */
   function renderArtists(artists) {
-    const tiles = artists.map(artist => {
+    const tiles = artists.map((artist, index) => {
       const safeName = sanitize(artist.name);
       const safeUrl = sanitize(artist.url);
       const playcount = parseInt(artist.playcount, 10) || 0;
+      const playsText = playcount === 1 ? 'play' : 'plays';
       
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer"><div class="artist loading-image" data-artist="${safeName}" title="${safeName}"><div class="title">${safeName}<span>${playcount} plays</span></div><div class="dark"></div></div></a>`;
+      // Accessible link with descriptive aria-label
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="${safeName}, ${playcount} ${playsText} this month"><div class="artist loading-image" data-artist="${safeName}" role="img" aria-label="${safeName}"><div class="title">${safeName}<span>${playcount} ${playsText}</span></div><div class="dark" aria-hidden="true"></div></div></a>`;
     });
     
-    contentEl.innerHTML = tiles.join('');
+    // Add heading for screen readers
+    contentEl.innerHTML = `<h2 class="visually-hidden">Top ${artists.length} artists this month</h2>` + tiles.join('');
     slideDown(contentEl, 1000);
     
     fetchAllArtistImages(artists);
