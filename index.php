@@ -57,7 +57,7 @@
 
     <!-- Main content area with ARIA live region for dynamic updates -->
     <main id="main-content" role="main">
-      <p class="rate-limit-note">Artist images load progressively due to <a href="https://www.discogs.com/developers" target="_blank" rel="noopener noreferrer">Discogs API</a> rate limiting (60 requests/minute).</p>
+      <p class="rate-limit-note">Artist images load progressively to adapt to API rate limiting.</p>
       <div class="content" style="display:none;" aria-live="polite" aria-atomic="false"></div>
     </main>
 
