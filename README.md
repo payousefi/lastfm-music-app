@@ -39,7 +39,7 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
 
 - PHP (minimal, for SEO)
 - Vanilla JavaScript
-- CSS3 (animations, glassmorphism)
+- CSS3
 - APIs: Last.fm, MusicBrainz, Discogs, TheAudioDB
 
 ## API Licensing
