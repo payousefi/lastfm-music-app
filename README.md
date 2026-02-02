@@ -9,6 +9,8 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
 ## Features
 
 - Dynamic artist tiles with images from multiple sources
+- Configurable primary image source
+- Adaptive rate limiting for Discogs and MusicBrainz APIs
 - SPA-style navigation using History API
 - Responsive design
 - Accessible (keyboard navigation, screen reader support, reduced motion)
@@ -18,9 +20,10 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
 
 1. **Last.fm** — Fetches top artists from the past month
 2. **MusicBrainz** — Looks up artist MBIDs and verified Discogs IDs
-3. **Discogs** — Primary source for high-quality artist images
-4. **TheAudioDB** — Fallback image source using MBID
-5. **iTunes** — Final fallback for indie/obscure artists
+3. **Image sources** (configurable order):
+   - **iTunes** — Default primary; fast with no rate limit
+   - **Discogs** — High-quality artist photos
+   - **TheAudioDB** — Fallback using MBID
 
 ## Background
 
@@ -33,6 +36,8 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
 - **2026** — Major rewrite with Claude:
   - Vanilla JS (removed jQuery)
   - Multi-source artist images via MusicBrainz + Discogs + TheAudioDB + iTunes
+  - Configurable primary image source
+  - Adaptive rate limiting for Discogs and MusicBrainz APIs
   - History API for SPA navigation
   - WCAG accessibility improvements
 

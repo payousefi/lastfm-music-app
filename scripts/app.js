@@ -20,7 +20,7 @@
     defaultUsername: 'solitude12',
     artistLimit: 12,
     period: '1month',
-    tileSize: 300, // Tile size in pixels
+    tileSize: 250, // Tile size in pixels (matches CSS .artist width/height)
     
     // Image source pipeline - tried in order until image found
     // MusicBrainz is always called first if DISCOGS or THE_AUDIO_DB are in the list
@@ -54,6 +54,35 @@
     
     updateFromHeaders(headers) {
       const remaining = headers.get('X-Discogs-Ratelimit-Remaining');
+      if (remaining !== null) {
+        this.remaining = parseInt(remaining, 10);
+      }
+    }
+  };
+
+  // MusicBrainz rate limiter - adaptive delay based on remaining requests from headers
+  // MusicBrainz allows ~1200 requests per time window. We adjust speed based on how many are left.
+  const musicBrainzRateLimiter = {
+    remaining: 1200,
+    
+    async waitIfNeeded() {
+      // Adaptive delay based on remaining requests
+      // remaining > 600: 100ms (fast - plenty of headroom)
+      // remaining 200-600: 500ms (moderate)
+      // remaining < 200: 1000ms (slow, conserve)
+      let delay;
+      if (this.remaining > 600) {
+        delay = 100;
+      } else if (this.remaining > 200) {
+        delay = 500;
+      } else {
+        delay = 1000;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+    },
+    
+    updateFromHeaders(headers) {
+      const remaining = headers.get('X-RateLimit-Remaining');
       if (remaining !== null) {
         this.remaining = parseInt(remaining, 10);
       }
@@ -208,8 +237,14 @@
     // If no MBID from Last.fm, search MusicBrainz by name
     if (!effectiveMbid || effectiveMbid.length === 0) {
       try {
+        // Wait if rate limited
+        await musicBrainzRateLimiter.waitIfNeeded();
+        
         const searchUrl = `https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(artistName)}&fmt=json&limit=1`;
         const searchResponse = await fetch(searchUrl);
+        
+        // Update rate limiter from response headers
+        musicBrainzRateLimiter.updateFromHeaders(searchResponse.headers);
         
         if (searchResponse.ok) {
           const searchData = await searchResponse.json();
@@ -229,8 +264,14 @@
     // Fetch MusicBrainz artist with URL relations
     let discogsId = null;
     try {
+      // Wait if rate limited
+      await musicBrainzRateLimiter.waitIfNeeded();
+      
       const mbUrl = `https://musicbrainz.org/ws/2/artist/${effectiveMbid}?inc=url-rels&fmt=json`;
       const response = await fetch(mbUrl);
+      
+      // Update rate limiter from response headers
+      musicBrainzRateLimiter.updateFromHeaders(response.headers);
       
       if (response.ok) {
         const data = await response.json();
@@ -331,8 +372,9 @@
       if (lookupData.results && lookupData.results.length > 1) {
         const album = lookupData.results[1]; // First album after artist
         if (album.artworkUrl100) {
-          // Replace 100x100 with larger size (600x600)
-          return album.artworkUrl100.replace('100x100', '600x600');
+          // Replace 100x100 with 3x tile size for retina displays
+          const targetSize = CONFIG.tileSize * 3;
+          return album.artworkUrl100.replace('100x100', `${targetSize}x${targetSize}`);
         }
       }
       
@@ -345,14 +387,14 @@
   /**
    * Fetch artist image from Discogs API using verified artist ID
    * Uses rate limiter to respect API limits while maximizing throughput
-   * Optimizes for images at least 3x tile size (900px) for retina displays
+   * Optimizes for images at least 3x tile size for retina displays
    */
   async function fetchDiscogsImageById(discogsId) {
     if (!discogsId) {
       return null;
     }
     
-    const MIN_SIZE = CONFIG.tileSize * 3; // 900px for retina displays
+    const MIN_SIZE = CONFIG.tileSize * 3; // 750px for retina displays (3x 250px tiles)
     
     // Wait if rate limited
     await discogsRateLimiter.waitIfNeeded();
