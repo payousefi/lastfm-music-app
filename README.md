@@ -1,18 +1,50 @@
 # [music.payamyousefi.com](https://music.payamyousefi.com/)
-This is a small web app that connects to the Last.fm API and outputs top artists in a tiled layout + design. Users can input their own usernames to redirect to a shareable and custom URL for their own personal top artists page.
 
-## Live Tool
-A live version of the tool can be used [here](https://music.payamyousefi.com/).
+A web app that displays your Last.fm top artists in a beautiful tiled layout. Enter any username to get a shareable, custom URL.
 
-## Inspiration
-I am asked “What kind of music do you like?” all too often. It’s the kind of question I can never answer to a satisfactory extent, so I decided to create a solution by aesthetically and dynamically presenting my recent music listening history.
+## Live
 
-My tastes vary a lot as the seasons change. My plan was to build a tool that displays my musical taste in the last month in a visually pleasing way. Being a member of Last.fm, I knew I had my listening data already being collected.
+[music.payamyousefi.com](https://music.payamyousefi.com/)
 
-“What kind of music do you like?” interfaces with the Last.fm API to retrieve music data from my profile, as well as the option to grab data from other users. With a little extra front-end magic using jQuery, HTML5, CSS3, the tool elegantly presents my favorite artists from the last 30 days.
+## Features
+
+- Dynamic artist tiles with images from multiple sources
+- SPA-style navigation using History API
+- Responsive design
+- Accessible (keyboard navigation, screen reader support, reduced motion)
+- No external JavaScript dependencies
+
+## How It Works
+
+1. **Last.fm** — Fetches top artists from the past month
+2. **MusicBrainz** — Looks up artist MBIDs and verified Discogs IDs
+3. **Discogs** — Primary source for high-quality artist images
+4. **TheAudioDB** — Fallback image source using MBID
+
+## Background
+
+"What kind of music do you like?" — a question I could never answer well. This tool solves that by dynamically presenting my recent listening history in a visual format.
 
 ## History
-Originally wrote this tool in May, 2014. Remade in 2016 with improved javascript, and social sharing options.
 
-## Ideas? Comments? Issues?
-Please feel free to let me know your thoughts on this tool. Submitting any new issues or improvements will be appreciated! :) Thanks
+- **2014** — Original version
+- **2016** — Improved JavaScript, added social sharing
+- **2026** — Major rewrite with Claude:
+  - Vanilla JS (removed jQuery)
+  - Multi-source artist images via MusicBrainz + Discogs + TheAudioDB
+  - History API for SPA navigation
+  - WCAG accessibility improvements
+
+## Stack
+
+- PHP (minimal, for SEO)
+- Vanilla JavaScript
+- CSS3 (animations, glassmorphism)
+- APIs: Last.fm, MusicBrainz, Discogs, TheAudioDB
+
+## API Licensing
+
+- **[Last.fm API](https://www.last.fm/api)** — Free for non-commercial use. Requires API key.
+- **[MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API)** — Free and open. No API key required. Rate limit: 1 request/second.
+- **[Discogs API](https://www.discogs.com/developers)** — Free for personal use. Requires key/secret. Rate limit: 60 requests/minute.
+- **[TheAudioDB API](https://www.theaudiodb.com/api_guide.php)** — Free tier available with shared API key. No rate limit specified.
