@@ -19,19 +19,12 @@
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
   <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? This past month&rsquo;s top artists are&hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- SEO/Social -->
   <meta property="og:image" content="img/screenshot.jpg" />
   <link href="favicon.ico" rel="icon">
-
-  <!-- Stylesheets -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;700&family=Lobster&display=swap">
   <link rel="stylesheet" href="stylesheets/reset.css">
   <link rel="stylesheet" href="stylesheets/main.css">
-
-  <!-- App Script (no external dependencies) -->
   <script src="scripts/app.js" defer></script>
-
 </head>
 
 <body>
@@ -69,7 +62,9 @@
     </main>
 
     <footer>
-      <p>{ designed by <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> &middot; &middot; &middot; play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a> &middot; artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> + <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> + <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> }</p>
+      <div class="image-sources-config" role="radiogroup" aria-label="Primary image source"></div>
+      
+      <p>{ designed by <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> &middot; &middot; &middot; play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a> &middot; artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> + <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> + <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> + <a href="https://affiliate.itunes.apple.com/resources/documentation/itunes-store-web-service-search-api/" target="_blank" rel="noopener noreferrer">iTunes</a> }</p>
     </footer>
 
   </div>

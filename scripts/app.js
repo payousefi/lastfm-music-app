@@ -1,6 +1,17 @@
 (function() {
   'use strict';
 
+  // Service identifiers for configurable pipeline
+  const SERVICES = {
+    // Metadata services (find artist IDs)
+    MUSICBRAINZ: 'MUSICBRAINZ',   // Finds MBID + Discogs ID
+    
+    // Image services (get actual images)
+    DISCOGS: 'DISCOGS',           // Needs Discogs ID (from MusicBrainz)
+    THE_AUDIO_DB: 'THE_AUDIO_DB', // Needs MBID (from MusicBrainz)
+    ITUNES: 'ITUNES'              // Standalone - searches by name, gets album art
+  };
+
   // Configuration
   const CONFIG = {
     lastfmApiKey: '***REMOVED***',
@@ -9,7 +20,15 @@
     defaultUsername: 'solitude12',
     artistLimit: 12,
     period: '1month',
-    tileSize: 300 // Tile size in pixels
+    tileSize: 300, // Tile size in pixels
+    
+    // Image source pipeline - tried in order until image found
+    // MusicBrainz is always called first if DISCOGS or THE_AUDIO_DB are in the list
+    // Example configs:
+    //   Default: ['DISCOGS', 'THE_AUDIO_DB', 'ITUNES']
+    //   iTunes only: ['ITUNES']
+    //   iTunes first: ['ITUNES', 'DISCOGS', 'THE_AUDIO_DB']
+    imageSources:  ['ITUNES', 'DISCOGS', 'THE_AUDIO_DB'],
   };
 
   // Discogs rate limiter - adaptive delay based on remaining requests from headers
@@ -44,11 +63,15 @@
   // DOM Elements
   let wrapperEl, contentEl, usernameInput, headerSubtitle;
 
-  // Image cache
+  // Image cache - keyed by "artistName:SOURCE" for per-source caching
+  // Also stores MusicBrainz data keyed by "artistName:MB_DATA"
   const imageCache = {};
 
   // Loading timer (show spinner only after 2s delay)
   let loadingTimer = null;
+
+  // Current artists (for reloading when sources change)
+  let currentArtists = [];
 
   /**
    * Sanitize a string to prevent XSS attacks
@@ -263,6 +286,63 @@
   }
 
   /**
+   * Fetch artist image from iTunes/Apple Music Search API
+   * Two-step process: search for artist, then lookup their albums for artwork
+   */
+  async function fetchiTunesImage(artistName) {
+    if (!artistName) {
+      return null;
+    }
+    
+    try {
+      // Step 1: Search for the artist to get their ID
+      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=1`;
+      const searchResponse = await fetch(searchUrl);
+      
+      if (!searchResponse.ok) {
+        return null;
+      }
+      
+      const searchData = await searchResponse.json();
+      
+      if (!searchData.results || searchData.results.length === 0) {
+        return null;
+      }
+      
+      const artist = searchData.results[0];
+      // Verify artist name matches (case-insensitive)
+      if (!artist.artistName || artist.artistName.toLowerCase() !== artistName.toLowerCase()) {
+        return null;
+      }
+      
+      const artistId = artist.artistId;
+      
+      // Step 2: Lookup artist's albums to get artwork
+      const lookupUrl = `https://itunes.apple.com/lookup?id=${artistId}&entity=album&limit=1`;
+      const lookupResponse = await fetch(lookupUrl);
+      
+      if (!lookupResponse.ok) {
+        return null;
+      }
+      
+      const lookupData = await lookupResponse.json();
+      
+      // Results include the artist first, then albums
+      if (lookupData.results && lookupData.results.length > 1) {
+        const album = lookupData.results[1]; // First album after artist
+        if (album.artworkUrl100) {
+          // Replace 100x100 with larger size (600x600)
+          return album.artworkUrl100.replace('100x100', '600x600');
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * Fetch artist image from Discogs API using verified artist ID
    * Uses rate limiter to respect API limits while maximizing throughput
    * Optimizes for images at least 3x tile size (900px) for retina displays
@@ -348,30 +428,59 @@
   }
 
   /**
-   * Fetch artist image using pre-fetched MusicBrainz data
-   * Only Discogs calls are rate-limited
+   * Fetch artist image using configurable source pipeline
+   * Sources are tried in order defined by CONFIG.imageSources
+   * Images are cached per-source so switching sources uses cached data when available
    */
   async function fetchArtistImageWithData(artistName, mbData) {
-    const cacheKey = artistName;
-    
-    if (imageCache[cacheKey] !== undefined) {
-      return imageCache[cacheKey];
-    }
-
     const { mbid, discogsId } = mbData || {};
-    
-    // Try Discogs first using verified ID (rate-limited call)
     let imageUrl = null;
-    if (discogsId) {
-      imageUrl = await fetchDiscogsImageById(discogsId);
+    
+    // Try each source in configured order, checking cache first
+    for (const source of CONFIG.imageSources) {
+      if (imageUrl) break;
+      
+      const cacheKey = `${artistName}:${source}`;
+      
+      // Check cache first
+      if (imageCache[cacheKey] !== undefined) {
+        if (imageCache[cacheKey]) {
+          imageUrl = imageCache[cacheKey];
+          break;
+        }
+        // Cached as null/empty means this source has no image, try next
+        continue;
+      }
+      
+      // Not in cache, fetch from source
+      let fetchedUrl = null;
+      
+      switch (source) {
+        case 'DISCOGS':
+          if (discogsId) {
+            fetchedUrl = await fetchDiscogsImageById(discogsId);
+          }
+          break;
+          
+        case 'THE_AUDIO_DB':
+          if (mbid) {
+            fetchedUrl = await fetchAudioDBImage(mbid);
+          }
+          break;
+          
+        case 'ITUNES':
+          fetchedUrl = await fetchiTunesImage(artistName);
+          break;
+      }
+      
+      // Cache the result (even if null, to avoid re-fetching)
+      imageCache[cacheKey] = fetchedUrl;
+      
+      if (fetchedUrl) {
+        imageUrl = fetchedUrl;
+      }
     }
     
-    // Fall back to TheAudioDB using MBID (no rate limit)
-    if (!imageUrl && mbid) {
-      imageUrl = await fetchAudioDBImage(mbid);
-    }
-    
-    imageCache[cacheKey] = imageUrl;
     return imageUrl;
   }
 
@@ -385,14 +494,6 @@
       img.onerror = () => reject();
       img.src = url;
     });
-  }
-
-  /**
-   * Calculate how many tiles fit per row based on viewport width
-   */
-  function getTilesPerRow() {
-    const viewportWidth = window.innerWidth;
-    return Math.max(1, Math.floor(viewportWidth / CONFIG.tileSize));
   }
 
   /**
@@ -436,19 +537,6 @@
   }
 
   /**
-   * Get diagonal index for a tile position (for diagonal reveal pattern)
-   * Diagonal 0: (0,0)
-   * Diagonal 1: (1,0), (0,1)
-   * Diagonal 2: (2,0), (1,1), (0,2)
-   * etc.
-   */
-  function getDiagonalIndex(index, tilesPerRow) {
-    const row = Math.floor(index / tilesPerRow);
-    const col = index % tilesPerRow;
-    return row + col;
-  }
-
-  /**
    * Mark a tile as actively loading (triggers pulsing animation)
    */
   function setTileLoadingActive(artistName) {
@@ -463,49 +551,54 @@
   }
 
   /**
-   * Get artists reordered by diagonal pattern
-   * For a 3-column grid: [0], [1,3], [2,4,6], [5,7,9], [8,10], [11]
+   * Shuffle array using Fisher-Yates algorithm
+   * Returns a new shuffled array, doesn't modify original
    */
-  function getArtistsByDiagonal(artists, tilesPerRow) {
-    const totalRows = Math.ceil(artists.length / tilesPerRow);
-    const maxDiagonal = (tilesPerRow - 1) + (totalRows - 1);
-    const orderedArtists = [];
-    
-    for (let d = 0; d <= maxDiagonal; d++) {
-      for (let row = 0; row < totalRows; row++) {
-        const col = d - row;
-        if (col >= 0 && col < tilesPerRow) {
-          const index = row * tilesPerRow + col;
-          if (index < artists.length) {
-            orderedArtists.push({ artist: artists[index], originalIndex: index, diagonal: d });
-          }
-        }
-      }
+  function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    
-    return orderedArtists;
+    return shuffled;
   }
 
   /**
    * Fetch all artist images with optimized API calls:
-   * 1. Prefetch all MusicBrainz data in parallel (no rate limit)
-   * 2. Fetch Discogs images sequentially with rate limiting
-   * 3. Reveal in diagonal pattern from top-left to bottom-right
+   * 1. Prefetch all MusicBrainz data in parallel (no rate limit) - cached for reuse
+   * 2. Fetch images in random order with rate limiting
+   * 3. Reveal each tile immediately as its image loads
    */
   async function fetchAllArtistImages(artists) {
-    const tilesPerRow = getTilesPerRow();
-    const diagonalOrder = getArtistsByDiagonal(artists, tilesPerRow);
-    const diagonalGroups = {};
+    // Shuffle artists for random reveal order
+    const shuffledArtists = shuffleArray(artists);
     
-    // Phase 1: Prefetch all MusicBrainz data in parallel (fast!)
-    console.log('Prefetching MusicBrainz data for all artists...');
-    const mbDataMap = await prefetchMusicBrainzData(artists);
-    console.log('MusicBrainz prefetch complete');
+    // Phase 1: Get MusicBrainz data if needed (check cache first)
+    const needsMusicBrainz = CONFIG.imageSources.some(s => s === 'DISCOGS' || s === 'THE_AUDIO_DB');
+    let mbDataMap = {};
     
-    // Phase 2: Fetch images in diagonal order (rate limiting handled by discogsRateLimiter)
-    for (let i = 0; i < diagonalOrder.length; i++) {
-      const { artist, originalIndex, diagonal } = diagonalOrder[i];
-      const mbData = mbDataMap[artist.name];
+    if (needsMusicBrainz) {
+      // Check if we have cached MB data for all artists
+      const uncachedArtists = artists.filter(a => imageCache[`${a.name}:MB_DATA`] === undefined);
+      
+      if (uncachedArtists.length > 0) {
+        // Fetch MB data for uncached artists
+        const newMbData = await prefetchMusicBrainzData(uncachedArtists);
+        // Cache the results
+        for (const [name, data] of Object.entries(newMbData)) {
+          imageCache[`${name}:MB_DATA`] = data;
+        }
+      }
+      
+      // Build mbDataMap from cache
+      for (const artist of artists) {
+        mbDataMap[artist.name] = imageCache[`${artist.name}:MB_DATA`] || {};
+      }
+    }
+    
+    // Phase 2: Fetch images in random order, reveal each immediately
+    for (const artist of shuffledArtists) {
+      const mbData = mbDataMap[artist.name] || {};
       
       // Mark tile as actively loading (pulsing star)
       setTileLoadingActive(artist.name);
@@ -514,47 +607,11 @@
       const imageUrl = await fetchArtistImageWithData(artist.name, mbData);
       const result = await prepareTileImage(artist.name, imageUrl);
       
+      // Reveal tile immediately
       if (result) {
-        if (!diagonalGroups[diagonal]) {
-          diagonalGroups[diagonal] = [];
-        }
-        diagonalGroups[diagonal].push(result);
-        
-        // Check if this diagonal is complete
-        const expectedTiles = getExpectedTilesInDiagonal(diagonal, tilesPerRow, artists.length);
-        if (diagonalGroups[diagonal].length >= expectedTiles) {
-          revealRow(diagonalGroups[diagonal]);
-          diagonalGroups[diagonal] = []; // Mark as revealed
-        }
+        revealRow([result]);
       }
     }
-    
-    // Reveal any remaining tiles
-    for (const d in diagonalGroups) {
-      if (diagonalGroups[d] && diagonalGroups[d].length > 0) {
-        revealRow(diagonalGroups[d]);
-      }
-    }
-  }
-
-  /**
-   * Calculate expected number of tiles in a diagonal
-   */
-  function getExpectedTilesInDiagonal(diagonalIdx, tilesPerRow, totalTiles) {
-    const totalRows = Math.ceil(totalTiles / tilesPerRow);
-    let count = 0;
-    
-    for (let row = 0; row < totalRows; row++) {
-      const col = diagonalIdx - row;
-      if (col >= 0 && col < tilesPerRow) {
-        const index = row * tilesPerRow + col;
-        if (index < totalTiles) {
-          count++;
-        }
-      }
-    }
-    
-    return count;
   }
 
   /**
@@ -591,6 +648,9 @@
    * Render artist tiles with accessibility support
    */
   function renderArtists(artists) {
+    // Store artists for potential reload when sources change
+    currentArtists = artists;
+    
     const tiles = artists.map((artist, index) => {
       const safeName = sanitize(artist.name);
       const safeUrl = sanitize(artist.url);
@@ -611,8 +671,69 @@
     fetchAllArtistImages(artists).then(() => {
       // Hide rate limit note when all images are loaded
       showRateLimitNote(false);
+      
+      // Prefetch images from other sources in background for instant switching
+      prefetchOtherSources(artists);
     });
     animateBackgroundColor(generateRandomColor());
+  }
+
+  /**
+   * Prefetch images from non-primary sources in background
+   * This enables instant crossfade when switching sources
+   */
+  async function prefetchOtherSources(artists) {
+    const primarySource = CONFIG.imageSources[0];
+    const otherSources = CONFIG.imageSources.slice(1);
+    
+    if (otherSources.length === 0) return;
+    
+    // Get MusicBrainz data from cache (should already be there)
+    const mbDataMap = {};
+    for (const artist of artists) {
+      mbDataMap[artist.name] = imageCache[`${artist.name}:MB_DATA`] || {};
+    }
+    
+    // Prefetch each source sequentially to avoid rate limit issues
+    for (const source of otherSources) {
+      for (const artist of artists) {
+        const cacheKey = `${artist.name}:${source}`;
+        
+        // Skip if already cached
+        if (imageCache[cacheKey] !== undefined) continue;
+        
+        const mbData = mbDataMap[artist.name];
+        let imageUrl = null;
+        
+        try {
+          switch (source) {
+            case 'DISCOGS':
+              if (mbData.discogsId) {
+                imageUrl = await fetchDiscogsImageById(mbData.discogsId);
+              }
+              break;
+            case 'THE_AUDIO_DB':
+              if (mbData.mbid) {
+                imageUrl = await fetchAudioDBImage(mbData.mbid);
+              }
+              break;
+            case 'ITUNES':
+              imageUrl = await fetchiTunesImage(artist.name);
+              break;
+          }
+        } catch (e) {
+          // Silently fail - this is background prefetch
+        }
+        
+        // Cache result (even if null)
+        imageCache[cacheKey] = imageUrl;
+        
+        // Preload the image if we got one
+        if (imageUrl) {
+          preloadImage(imageUrl).catch(() => {});
+        }
+      }
+    }
   }
 
   /**
@@ -690,6 +811,138 @@
     loadUser(username);
   }
 
+  // Display names for image sources
+  const SOURCE_NAMES = {
+    'ITUNES': 'iTunes',
+    'DISCOGS': 'Discogs',
+    'THE_AUDIO_DB': 'TheAudioDB'
+  };
+
+  /**
+   * Render image source radio buttons based on CONFIG.imageSources
+   */
+  function renderImageSourceRadios() {
+    const container = document.querySelector('.image-sources-config');
+    if (!container) return;
+    
+    const primarySource = CONFIG.imageSources[0];
+    
+    // Build HTML: label + radio buttons for each source in config
+    let html = '<span class="config-label">Primary Source:</span>';
+    
+    CONFIG.imageSources.forEach((source, index) => {
+      const displayName = SOURCE_NAMES[source] || source;
+      const checked = index === 0 ? ' checked' : '';
+      const id = `source-${source.toLowerCase().replace(/_/g, '-')}`;
+      html += `<label><input type="radio" name="image-source" id="${id}" value="${source}"${checked}> ${displayName}</label>`;
+    });
+    
+    container.innerHTML = html;
+    
+    // Add event listeners to new radio buttons
+    const radios = container.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+      radio.addEventListener('change', handleImageSourceChange);
+    });
+  }
+
+  /**
+   * Crossfade a tile to a new image
+   * Uses ::before pseudo-element for smooth transition
+   */
+  function crossfadeTile(tile, newImageUrl) {
+    return new Promise(resolve => {
+      if (!newImageUrl) {
+        // No image - just show no-image state
+        tile.classList.remove('image-loaded', 'crossfading');
+        tile.classList.add('no-image');
+        tile.style.backgroundImage = '';
+        resolve();
+        return;
+      }
+      
+      // Set the new image on ::before via CSS custom property
+      tile.style.setProperty('--crossfade-image', `url(${newImageUrl})`);
+      tile.classList.add('crossfading');
+      
+      // After transition completes, swap images
+      setTimeout(() => {
+        tile.style.backgroundImage = `url(${newImageUrl})`;
+        tile.classList.remove('crossfading', 'no-image');
+        tile.classList.add('image-loaded');
+        tile.style.removeProperty('--crossfade-image');
+        resolve();
+      }, 400); // Match CSS transition duration
+    });
+  }
+
+  /**
+   * Handle image source radio button changes
+   * Selected source becomes primary, others become fallbacks
+   * Prioritizes showing PRIMARY source image, fetches if not cached
+   */
+  async function handleImageSourceChange() {
+    const selectedRadio = document.querySelector('.image-sources-config input[type="radio"]:checked');
+    if (!selectedRadio) return;
+    
+    const primarySource = selectedRadio.value;
+    
+    // Build new sources array: primary first, then others in their current order
+    const newSources = [primarySource, ...CONFIG.imageSources.filter(s => s !== primarySource)];
+    
+    // Update config
+    CONFIG.imageSources = newSources;
+    
+    // Update images if we have artists loaded
+    if (currentArtists.length > 0) {
+      const tiles = document.querySelectorAll('.artist');
+      const crossfadePromises = [];
+      const artistsToFetch = [];
+      
+      // For each artist, check if PRIMARY source is cached
+      for (const artist of currentArtists) {
+        const tile = Array.from(tiles).find(t => t.dataset.artist === artist.name);
+        if (!tile) continue;
+        
+        // Check if PRIMARY source has cached image
+        const primaryCacheKey = `${artist.name}:${primarySource}`;
+        const primaryImage = imageCache[primaryCacheKey];
+        
+        if (primaryImage) {
+          // Primary source cached - crossfade to it
+          crossfadePromises.push(crossfadeTile(tile, primaryImage));
+        } else if (imageCache[primaryCacheKey] === null) {
+          // Primary source was tried but has no image - use fallback
+          let fallbackImage = null;
+          for (const source of newSources.slice(1)) {
+            const cacheKey = `${artist.name}:${source}`;
+            if (imageCache[cacheKey]) {
+              fallbackImage = imageCache[cacheKey];
+              break;
+            }
+          }
+          crossfadePromises.push(crossfadeTile(tile, fallbackImage));
+        } else {
+          // Primary source not yet tried - fetch it
+          artistsToFetch.push(artist);
+          tile.classList.remove('image-loaded', 'no-image', 'crossfading');
+          tile.classList.add('loading-image');
+          tile.style.backgroundImage = '';
+        }
+      }
+      
+      // Crossfade cached images immediately
+      await Promise.all(crossfadePromises);
+      
+      // Fetch uncached images if any
+      if (artistsToFetch.length > 0) {
+        showRateLimitNote(true);
+        await fetchAllArtistImages(artistsToFetch);
+        showRateLimitNote(false);
+      }
+    }
+  }
+
   /**
    * Initialize the app
    */
@@ -703,6 +956,10 @@
       console.error('Required DOM elements not found');
       return;
     }
+    
+    // Render image source radio buttons based on CONFIG.imageSources
+    // (event listeners are added inside renderImageSourceRadios)
+    renderImageSourceRadios();
     
     const username = getUsernameFromPath();
     loadUser(username);

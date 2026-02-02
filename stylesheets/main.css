@@ -183,6 +183,29 @@ hr {
     -webkit-box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
     -moz-box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
     box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
+    /* Prevent any layout shift during crossfade */
+    overflow: hidden;
+}
+
+/* Crossfade overlay for smooth image transitions */
+.artist::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: var(--crossfade-image);
+    background-position: center center;
+    background-size: cover;
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.artist.crossfading::before {
+    opacity: 1;
 }
 
 /* Star placeholder base styles */
@@ -416,7 +439,7 @@ a, .title, .dark, input {
 /*  Footer
 ----------------------------------------------------- */
 footer {
-    padding: 35px 20px;
+    padding: 15px 20px 35px;
     margin: 40px -30px -40px;
     background: rgba(0,0,0,.35);
     text-align: center;
@@ -426,4 +449,45 @@ footer {
 footer p {
     font-size: 14px;
     line-height: 22px;
+}
+
+/*  Image Sources Config
+----------------------------------------------------- */
+.image-sources-config {
+    border: none;
+    margin: 0 0 15px 0;
+    padding: 0 0 15px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    font-size: 13px;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+.image-sources-config .config-label {
+    font-weight: normal;
+    padding: 0;
+    margin: 0;
+    opacity: 0.8;
+}
+
+.image-sources-config label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.image-sources-config label:has(input:checked) {
+    opacity: 1;
+}
+
+.image-sources-config input[type="radio"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    margin: 0;
 }
