@@ -28,7 +28,7 @@
   } else { // Custom user request
 
     $title = $root[0];
-    $whos = "<a href='https://last.fm/user/".$root[0]."'>".$root[0]."</a>'s";
+    $whos = "<a href='https://last.fm/user/".$root[0]."' target='_blank' rel='noopener noreferrer'>".$root[0]."</a>'s";
 
   }
 
@@ -47,31 +47,22 @@
   <link href="favicon.ico" rel="icon">
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Karla:400,700|Lobster" type="text/css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" type="text/css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/jquery.jssocials/1.4.0/jssocials.css" type="text/css" />
-  <link rel="stylesheet" href="stylesheets/reset.css" type="text/css">
-  <link rel="stylesheet" href="stylesheets/main.css" type="text/css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;700&family=Lobster&display=swap">
+  <link rel="stylesheet" href="stylesheets/reset.css">
+  <link rel="stylesheet" href="stylesheets/main.css">
 
-  <!-- Load JS/JQuery scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/pace.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-color/2.1.2/jquery.color.min.js" type="text/javascript"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery.jssocials/1.4.0/jssocials.min.js"></script>
-  <script src="scripts/app.js" type="text/javascript"></script>
+  <!-- App Script (no external dependencies) -->
+  <script src="scripts/app.js" defer></script>
 
 </head>
 
 <body>
 
-  <!-- social links -->
-  <div class="social"></div>
-
   <!-- main wrapper -->
   <div id="wrap">
     
     <header>
-      <h1><a href="https://music.payamyousefi.com">&#8220;What kind of music do you like?&#8221;</a></h1>
+      <h1><a href="/">&#8220;What kind of music do you like?&#8221;</a></h1>
       <h2>
         Curious about <?php echo $whos; ?> taste in music?<br/>
         This past month&rsquo;s top artists are&hellip;
@@ -80,7 +71,7 @@
 
     <hr/>
 
-    <p>Have your own <a href="https://last.fm/">last.fm</a> account? Type in your username: &nbsp;<input type="text" id="username" value=""/>&nbsp; and press <b>enter</b>.</p>
+    <p>Have your own <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">last.fm</a> account? Type in your username: &nbsp;<input type="text" id="username" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"/>&nbsp; and press <b>enter</b>.</p>
 
     <hr/>
 
@@ -88,21 +79,18 @@
     <div class="content" style="display:none;"></div>
 
     <footer>
-      <p>{ designed by <a href="https://payamyousefi.com/">Payam Yousefi</a> &middot; &middot; &middot; monthly play count + image data collected via <a href="https://last.fm/">Last.fm</a> API }</p>
+      <p>{ designed by <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> &middot; &middot; &middot; play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a> &middot; artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> + <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> + <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> }</p>
     </footer>
 
   </div>
 
-  <!-- analytics -->
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VB31S6GZ1J"></script>
   <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-    ga('create', 'UA-46647973-3', 'auto');
-    ga('send', 'pageview');
-
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-VB31S6GZ1J');
   </script>
 </body>
 </html>
