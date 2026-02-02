@@ -64,7 +64,17 @@
     <footer>
       <div class="image-sources-config" role="radiogroup" aria-label="Primary image source"></div>
       
-      <p>{ designed by <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> &middot; &middot; &middot; play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a> &middot; artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> + <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> + <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> + <a href="https://performance-partners.apple.com/search-api" target="_blank" rel="noopener noreferrer">iTunes</a> }</p>
+      <div class="footer-content">
+        <!-- Copyright group -->
+        <p class="footer-copyright">&copy; <?php echo date('Y'); ?> <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> · designed &amp; developed by Payam</p>
+        
+        <!-- Data sources group -->
+        <p class="footer-data">
+          <span class="data-group play-data">play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a></span>
+          <span class="data-sep"> · </span>
+          <span class="data-group artist-data">artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> · <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> · <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> · <a href="https://performance-partners.apple.com/search-api" target="_blank" rel="noopener noreferrer">iTunes</a></span>
+        </p>
+      </div>
     </footer>
 
   </div>
