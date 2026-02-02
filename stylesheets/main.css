@@ -133,8 +133,32 @@ hr {
 ----------------------------------------------------- */
 .content {
     text-align: center;
-    margin-top: 10px;
-    margin-bottom: 35px;
+    margin-top: 0px;
+    margin-bottom: 50px;
+}
+
+/* Rate limit disclaimer note - fixed height container to prevent layout shift */
+.rate-limit-note {
+    font-size: 15px;
+    margin-top: -10px;
+    margin-bottom: 0px;
+    min-height: 18px;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.rate-limit-note.visible {
+    visibility: visible;
+    opacity: 0.5;
+}
+
+.rate-limit-note.fading {
+    opacity: 0;
+}
+
+.rate-limit-note a {
+    color: inherit;
 }
 
 /*  Artist tiles
