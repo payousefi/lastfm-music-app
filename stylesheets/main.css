@@ -1,21 +1,29 @@
 /*  Accessibility
 ----------------------------------------------------- */
 
-/* Skip link for keyboard navigation */
+/* Skip link for keyboard navigation - hidden until focused */
 .skip-link {
     position: absolute;
-    top: -40px;
-    left: 0;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 100;
     background: #FFF;
     color: #000;
     padding: 8px 16px;
-    z-index: 100;
     text-decoration: none;
     font-weight: bold;
 }
 
 .skip-link:focus {
-    top: 0;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: auto;
+    height: auto;
+    overflow: visible;
 }
 
 /* Visually hidden but accessible to screen readers */
@@ -191,8 +199,8 @@ hr {
     /* Standard 5-pointed star polygon, solid white */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='white' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
+    background-position: center center;
+    background-size: 150px 150px;
     z-index: 1;
 }
 
@@ -211,9 +219,11 @@ hr {
     50% { opacity: 0.7; }
 }
 
-/* No image found - static star, normal opacity */
+/* No image found - star uses CSS variable for background color (set by JS) */
 .artist.no-image::after {
-    opacity: 0.8;
+    opacity: 1;
+    /* Star color comes from CSS variable --bg-color set by JS, fallback to dark */
+    background-image: var(--star-bg, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='%23333' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E"));
 }
 
 /*  Hover effect on artist tiles

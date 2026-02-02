@@ -77,6 +77,12 @@
     wrapperEl.style.transition = 'background-color 0.7s ease-out';
     document.body.style.backgroundColor = targetColor;
     wrapperEl.style.backgroundColor = targetColor;
+    
+    // Set CSS variable for star color to match background (cutout effect)
+    // Uses exact same polygon points as the loading star in CSS
+    const encodedColor = encodeURIComponent(targetColor);
+    const starSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='${encodedColor}' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E")`;
+    document.documentElement.style.setProperty('--star-bg', starSvg);
   }
 
   /**
