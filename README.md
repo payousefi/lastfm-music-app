@@ -49,4 +49,4 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
 - **[MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API)** — Free and open. No API key required. Rate limit: 1 request/second.
 - **[Discogs API](https://www.discogs.com/developers)** — Free for personal use. Requires key/secret. Rate limit: 60 requests/minute.
 - **[TheAudioDB API](https://www.theaudiodb.com/api_guide.php)** — Free tier available with shared API key. No rate limit specified.
-- **[iTunes Search API](https://affiliate.itunes.apple.com/resources/documentation/itunes-store-web-service-search-api/)** — Free, no authentication required. ~20 requests/second.
+- **[iTunes Search API](https://performance-partners.apple.com/search-api)** — Free, no authentication required. ~20 requests/second.

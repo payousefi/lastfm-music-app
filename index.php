@@ -64,7 +64,7 @@
     <footer>
       <div class="image-sources-config" role="radiogroup" aria-label="Primary image source"></div>
       
-      <p>{ designed by <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> &middot; &middot; &middot; play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a> &middot; artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> + <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> + <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> + <a href="https://affiliate.itunes.apple.com/resources/documentation/itunes-store-web-service-search-api/" target="_blank" rel="noopener noreferrer">iTunes</a> }</p>
+      <p>{ designed by <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> &middot; &middot; &middot; play data via <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">Last.fm</a> &middot; artist data via <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> + <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> + <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> + <a href="https://performance-partners.apple.com/search-api" target="_blank" rel="noopener noreferrer">iTunes</a> }</p>
     </footer>
 
   </div>
