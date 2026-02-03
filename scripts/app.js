@@ -90,17 +90,218 @@
   };
 
   // DOM Elements
-  let wrapperEl, contentEl, usernameInput, headerSubtitle;
+  let wrapperEl, contentEl, usernameInput, headerSubtitle, personalityEl;
 
   // Image cache - keyed by "artistName:SOURCE" for per-source caching
   // Also stores MusicBrainz data keyed by "artistName:MB_DATA"
   const imageCache = {};
+
+  // Personality data cache - stores genre/style/mood per artist
+  const personalityCache = {};
 
   // Loading timer (show spinner only after 2s delay)
   let loadingTimer = null;
 
   // Current artists (for reloading when sources change)
   let currentArtists = [];
+
+  // Personality loading animation interval
+  let personalityAnimationInterval = null;
+
+  /**
+   * Analyze artist data to generate a music personality headline
+   * Uses TheAudioDB genre/style/mood data with Last.fm tags as fallback
+   */
+  function analyzePersonality(artistsData) {
+    // Aggregate moods and genres with weights based on play count
+    const moodCounts = {};
+    const genreCounts = {};
+    let totalPlays = 0;
+    
+    for (const data of artistsData) {
+      const weight = data.playcount || 1;
+      totalPlays += weight;
+      
+      // Process mood
+      if (data.mood) {
+        const normalizedMood = MOOD_MAP[data.mood.toLowerCase()] || null;
+        if (normalizedMood) {
+          moodCounts[normalizedMood] = (moodCounts[normalizedMood] || 0) + weight;
+        }
+      }
+      
+      // Process genre (try genre first, then style)
+      const genreStr = data.genre || data.style;
+      if (genreStr) {
+        const normalizedGenre = GENRE_FAMILY_MAP[genreStr.toLowerCase()] || null;
+        if (normalizedGenre) {
+          genreCounts[normalizedGenre] = (genreCounts[normalizedGenre] || 0) + weight;
+        }
+      }
+    }
+    
+    // Find dominant mood
+    let dominantMood = null;
+    let maxMoodCount = 0;
+    for (const [mood, count] of Object.entries(moodCounts)) {
+      if (count > maxMoodCount) {
+        maxMoodCount = count;
+        dominantMood = mood;
+      }
+    }
+    
+    // Find dominant genre (or eclectic if diverse)
+    let dominantGenre = 'eclectic';
+    let maxGenreCount = 0;
+    const genreEntries = Object.entries(genreCounts);
+    
+    if (genreEntries.length > 0) {
+      // Check for diversity - if top genre is less than 40% of total, consider eclectic
+      for (const [genre, count] of genreEntries) {
+        if (count > maxGenreCount) {
+          maxGenreCount = count;
+          dominantGenre = genre;
+        }
+      }
+      
+      // If we have 3+ genres and no clear dominant (< 50%), use eclectic
+      if (genreEntries.length >= 3 && maxGenreCount / totalPlays < 0.5) {
+        dominantGenre = 'eclectic';
+      }
+    }
+    
+    // Generate headline dynamically or fall back to static arrays
+    let headline;
+    if (typeof generateHeadline === 'function') {
+      // Use dynamic generation for infinite variety
+      headline = generateHeadline(dominantMood || 'relaxed', dominantGenre || 'eclectic');
+    } else {
+      // Fallback to static arrays
+      let headlines;
+      if (dominantMood && PERSONALITY_HEADLINES[dominantMood] && PERSONALITY_HEADLINES[dominantMood][dominantGenre]) {
+        headlines = PERSONALITY_HEADLINES[dominantMood][dominantGenre];
+      } else if (FALLBACK_HEADLINES[dominantGenre]) {
+        headlines = FALLBACK_HEADLINES[dominantGenre];
+      } else {
+        headlines = FALLBACK_HEADLINES.eclectic;
+      }
+      headline = headlines[Math.floor(Math.random() * headlines.length)];
+    }
+    
+    return {
+      headline,
+      mood: dominantMood,
+      genre: dominantGenre,
+      moodCounts,
+      genreCounts
+    };
+  }
+
+  /**
+   * Generate random present participle for loading animation
+   */
+  function generateRollingText() {
+    const participles = [
+      'Analyzing',
+      'Discovering',
+      'Exploring',
+      'Decoding',
+      'Vibing',
+      'Listening',
+      'Sensing',
+      'Feeling',
+      'Curating',
+      'Uncovering',
+      'Interpreting',
+      'Channeling',
+      'Absorbing',
+      'Processing',
+      'Contemplating'
+    ];
+    
+    return participles[Math.floor(Math.random() * participles.length)] + '...';
+  }
+
+  /**
+   * Show the personality loading state with rolling text animation
+   */
+  function showPersonalityLoading(username) {
+    if (!personalityEl) return;
+    
+    // Clear any existing animation
+    if (personalityAnimationInterval) {
+      clearInterval(personalityAnimationInterval);
+    }
+    
+    // Generate possessive text based on username
+    const isDefault = username === CONFIG.defaultUsername;
+    const whosText = isDefault ? 'My' : `${sanitize(username)}'s`;
+    
+    personalityEl.innerHTML = `<span class="personality-label">${whosText} Music Personality</span><span class="personality-content"><span class="personality-rolling"></span><span class="personality-text"></span></span>`;
+    personalityEl.style.display = 'block';
+    personalityEl.classList.remove('visible');
+    personalityEl.classList.add('loading');
+    
+    // Start rolling text animation (slower pace - 400ms)
+    const rollingEl = personalityEl.querySelector('.personality-rolling');
+    if (rollingEl) {
+      rollingEl.textContent = generateRollingText();
+      personalityAnimationInterval = setInterval(() => {
+        rollingEl.textContent = generateRollingText();
+      }, 400);
+    }
+  }
+
+  /**
+   * Display the music personality headline (replaces loading state)
+   */
+  function displayPersonality(headline) {
+    if (!personalityEl || !headline) return;
+    
+    // Stop the rolling animation
+    if (personalityAnimationInterval) {
+      clearInterval(personalityAnimationInterval);
+      personalityAnimationInterval = null;
+    }
+    
+    // Fade out the rolling text first
+    const rollingEl = personalityEl.querySelector('.personality-rolling');
+    if (rollingEl) {
+      rollingEl.classList.add('fading-out');
+    }
+    
+    // After fade-out, show the result
+    setTimeout(() => {
+      // Update the text content
+      const textEl = personalityEl.querySelector('.personality-text');
+      if (textEl) {
+        textEl.textContent = headline;
+      } else {
+        // Fallback if structure doesn't exist
+        personalityEl.innerHTML = `<span class="personality-label">Your Music Personality</span><span class="personality-content"><span class="personality-rolling"></span><span class="personality-text">${sanitize(headline)}</span></span>`;
+      }
+      
+      // Transition from loading to visible
+      personalityEl.classList.remove('loading');
+      personalityEl.classList.add('visible');
+    }, 300);
+  }
+
+  /**
+   * Hide the music personality headline
+   */
+  function hidePersonality() {
+    if (!personalityEl) return;
+    
+    // Stop the rolling animation
+    if (personalityAnimationInterval) {
+      clearInterval(personalityAnimationInterval);
+      personalityAnimationInterval = null;
+    }
+    
+    personalityEl.classList.remove('visible', 'loading');
+    personalityEl.style.display = 'none';
+  }
 
   /**
    * Sanitize a string to prevent XSS attacks
@@ -151,7 +352,7 @@
     // Update meta description
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', `Curious about ${whosText} taste in music? This past month's top artists are…`);
+      metaDescription.setAttribute('content', `Curious about ${whosText} taste in music? Over the past month...`);
     }
   }
 
@@ -167,7 +368,7 @@
       const whosText = isDefault
         ? 'my'
         : `<a href="https://last.fm/user/${encodeURIComponent(username)}" target="_blank" rel="noopener noreferrer">${sanitize(username)}</a>'s`;
-      headerSubtitle.innerHTML = `Curious about ${whosText} taste in music?<br>This past month's top artists are…`;
+      headerSubtitle.innerHTML = `Curious about ${whosText} taste in music?<br>Over the past month...`;
     }
   }
 
@@ -297,11 +498,12 @@
   }
 
   /**
-   * Fetch artist image from TheAudioDB using MBID
+   * Fetch artist data from TheAudioDB using MBID
+   * Returns image URL and genre/style/mood for personality analysis
    */
-  async function fetchAudioDBImage(mbid) {
+  async function fetchAudioDBData(mbid) {
     if (!mbid) {
-      return null;
+      return { image: null, genre: null, style: null, mood: null };
     }
     
     try {
@@ -309,21 +511,33 @@
       const response = await fetch(url);
       
       if (!response.ok) {
-        return null;
+        return { image: null, genre: null, style: null, mood: null };
       }
       
       const data = await response.json();
       
       if (data.artists && data.artists.length > 0) {
         const artist = data.artists[0];
-        // Return thumb or full image
-        return artist.strArtistThumb || artist.strArtistFanart || null;
+        return {
+          image: artist.strArtistThumb || artist.strArtistFanart || null,
+          genre: artist.strGenre || null,
+          style: artist.strStyle || null,
+          mood: artist.strMood || null
+        };
       }
       
-      return null;
+      return { image: null, genre: null, style: null, mood: null };
     } catch (error) {
-      return null;
+      return { image: null, genre: null, style: null, mood: null };
     }
+  }
+
+  /**
+   * Fetch artist image from TheAudioDB using MBID (wrapper for backward compatibility)
+   */
+  async function fetchAudioDBImage(mbid) {
+    const data = await fetchAudioDBData(mbid);
+    return data.image;
   }
 
   /**
@@ -608,8 +822,10 @@
   /**
    * Fetch all artist images with optimized API calls:
    * 1. Prefetch all MusicBrainz data in parallel (no rate limit) - cached for reuse
-   * 2. Fetch images in random order with rate limiting
-   * 3. Reveal each tile immediately as its image loads
+   * 2. Fetch TheAudioDB data for personality analysis
+   * 3. Fetch images in random order with rate limiting
+   * 4. Reveal each tile immediately as its image loads
+   * 5. Analyze and display music personality
    */
   async function fetchAllArtistImages(artists) {
     // Shuffle artists for random reveal order
@@ -638,7 +854,47 @@
       }
     }
     
-    // Phase 2: Fetch images in random order, reveal each immediately
+    // Phase 2: Fetch TheAudioDB data for personality analysis (parallel, no rate limit)
+    const personalityDataPromises = artists.map(async (artist) => {
+      const mbData = mbDataMap[artist.name] || {};
+      
+      // Check personality cache first
+      if (personalityCache[artist.name]) {
+        return { ...personalityCache[artist.name], playcount: parseInt(artist.playcount, 10) || 1 };
+      }
+      
+      // Fetch from TheAudioDB if we have MBID
+      if (mbData.mbid) {
+        const audioDbData = await fetchAudioDBData(mbData.mbid);
+        const data = {
+          name: artist.name,
+          genre: audioDbData.genre,
+          style: audioDbData.style,
+          mood: audioDbData.mood,
+          playcount: parseInt(artist.playcount, 10) || 1
+        };
+        personalityCache[artist.name] = data;
+        return data;
+      }
+      
+      return { name: artist.name, genre: null, style: null, mood: null, playcount: parseInt(artist.playcount, 10) || 1 };
+    });
+    
+    const personalityData = await Promise.all(personalityDataPromises);
+    
+    // Analyze and display personality (with minimum delay for animation effect)
+    if (typeof PERSONALITY_HEADLINES !== 'undefined' && typeof GENRE_FAMILY_MAP !== 'undefined') {
+      const validData = personalityData.filter(d => d.genre || d.style || d.mood);
+      if (validData.length > 0) {
+        const analysis = analyzePersonality(validData);
+        // Add a minimum 3 second delay so the rolling text animation plays
+        setTimeout(() => {
+          displayPersonality(analysis.headline);
+        }, 3000);
+      }
+    }
+    
+    // Phase 3: Fetch images in random order, reveal each immediately
     for (const artist of shuffledArtists) {
       const mbData = mbDataMap[artist.name] || {};
       
@@ -689,9 +945,12 @@
   /**
    * Render artist tiles with accessibility support
    */
-  function renderArtists(artists) {
+  function renderArtists(artists, username) {
     // Store artists for potential reload when sources change
     currentArtists = artists;
+    
+    // Show personality loading state with username
+    showPersonalityLoading(username);
     
     const tiles = artists.map((artist, index) => {
       const safeName = sanitize(artist.name);
@@ -785,6 +1044,7 @@
     const sanitizedUsername = sanitize(username);
     
     updateHeaderSubtitle(username);
+    hidePersonality();
     showLoadingDelayed();
     
     const apiUrl = `https://ws.audioscrobbler.com/2.0/?method=user.getTopArtists` +
@@ -806,7 +1066,7 @@
       }
       
       if (data.topartists && data.topartists.artist && data.topartists.artist.length > 0) {
-        renderArtists(data.topartists.artist);
+        renderArtists(data.topartists.artist, username);
       } else {
         renderError("No listening data available for this user in the past month.");
       }
@@ -993,6 +1253,7 @@
     contentEl = document.querySelector('.content');
     usernameInput = document.getElementById('username');
     headerSubtitle = document.querySelector('header h2');
+    personalityEl = document.querySelector('.music-personality');
     
     if (!wrapperEl || !contentEl) {
       console.error('Required DOM elements not found');

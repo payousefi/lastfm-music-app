@@ -12,7 +12,7 @@
     z-index: 100;
     background: #FFF;
     color: #000;
-    padding: 8px 16px;
+    padding: 10px 15px;
     text-decoration: none;
     font-weight: bold;
 }
@@ -76,7 +76,7 @@ body {
     background: #000;
     font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 18px;
-    line-height: 28px;
+    line-height: 30px;
     color: #FFF;
     text-align: center;
     width: 100%;
@@ -88,14 +88,20 @@ body {
 
 h1 {
     font-family: 'Lobster', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 44px;
-    line-height: 52px;
+    font-size: 32px;
+    line-height: 40px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease-out;
+}
+
+h1:hover {
+    opacity: 0.8;
 }
 
 h2 {
-    margin-top: 20px;
-    font-size: 22px;
-    line-height: 32px;
+    margin-top: 10px;
+    font-size: 18px;
+    line-height: 26px;
     font-weight: 400;
 }
 
@@ -110,8 +116,8 @@ h1 a, h1 a:hover {
 
 p {
     color: #FFF;
-    font-size: 18px;
-    line-height: 28px;
+    font-size: 16px;
+    line-height: 25px;
     opacity: .9;
     font-weight: 400;
     text-align: center;
@@ -122,13 +128,13 @@ hr {
     background: rgba(255,255,255,0.25);
     height: 1px;
     border: 0;
-    margin: 35px 0;
+    margin: 20px 0;
 }
 
 /*  Wrapper - background color is set dynamically via JS
 ----------------------------------------------------- */
 #wrap {
-    padding: 40px 30px;
+    padding: 25px 20px;
     text-align: center;
     background: #000;
     min-height: 100vh;
@@ -137,11 +143,16 @@ hr {
     flex-direction: column;
 }
 
+/*  Header - gradient from top (flipped from footer)
+----------------------------------------------------- */
+header {
+    padding: 10px 20px 20px;
+}
+
 /*  Music data content
 ----------------------------------------------------- */
 .content {
     text-align: center;
-    margin-top: 0px;
     margin-bottom: 50px;
     /* Limit to 4 tiles per row: 4 × (250px tile + 30px margin) = 1120px */
     max-width: 1120px;
@@ -149,12 +160,102 @@ hr {
     margin-right: auto;
 }
 
+/*  Music Personality Headline - Hero element, larger than site title
+----------------------------------------------------- */
+.music-personality {
+    font-family: 'Lobster', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 46px;
+    line-height: 46px;
+    text-align: center;
+    margin: 30px auto 15px;
+    padding: 0 15px;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.6s ease-out;
+}
+
+.music-personality.loading,
+.music-personality.visible {
+    visibility: visible;
+    opacity: 1;
+}
+
+.music-personality .personality-label {
+    display: block;
+    font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+/* Fixed-height container for rolling/text to prevent layout shift */
+.music-personality .personality-content {
+    display: block;
+    height: 50px;
+}
+
+/* Rolling text loading animation */
+.music-personality .personality-rolling {
+    display: inline-block;
+    opacity: 0.5;
+    font-style: italic;
+    transition: opacity 0.3s ease-out;
+}
+
+.music-personality .personality-rolling.fading-out {
+    opacity: 0;
+}
+
+/* Actual headline text - starts hidden */
+.music-personality .personality-text {
+    display: none;
+    opacity: 0;
+}
+
+/* When visible, hide rolling and show text with fade-in */
+.music-personality.visible .personality-rolling {
+    display: none;
+}
+
+.music-personality.visible .personality-text {
+    display: inline;
+    animation: personalityReveal 2s ease-out forwards;
+}
+
+@keyframes personalityReveal {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .music-personality {
+        font-size: 30px;
+        line-height: 36px;
+    }
+    
+    .music-personality .personality-content {
+        height: 40px;
+    }
+    
+    .music-personality .personality-label {
+        font-size: 14px;
+    }
+}
+
 /* Rate limit disclaimer note - fixed height container to prevent layout shift */
 .rate-limit-note {
     font-size: 15px;
-    margin-top: -10px;
-    margin-bottom: 0px;
-    min-height: 18px;
+    min-height: 15px;
+    margin: 0 auto;
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-out;
@@ -173,6 +274,13 @@ hr {
     color: inherit;
 }
 
+@media screen and (max-width: 480px) {
+    .rate-limit-note {
+        font-size: 13px;
+        max-width: 300px;
+    }
+}
+
 /*  Artist tiles
 ----------------------------------------------------- */
 .artist {
@@ -186,9 +294,19 @@ hr {
     background-size: cover;
     -webkit-box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
     -moz-box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
-    box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
+    box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25),
+                inset 0 0 0 1px rgba(255,255,255,0.1);
     /* Prevent any layout shift during crossfade */
     overflow: hidden;
+    border-radius: 6px;
+    transition: box-shadow 0.2s ease-out;
+}
+
+/* Shimmer border effect on hover */
+.artist:hover {
+    box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25),
+                inset 0 0 0 1px rgba(255,255,255,0.1);
+                
 }
 
 /* Crossfade overlay for smooth image transitions */
@@ -280,17 +398,30 @@ hr {
     left: auto;
     opacity: 0;
     background: none;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    margin: 0 15px 15px;
-    padding: 7px 9px;
-    border: 1px solid #FFF;
+    -webkit-backdrop-filter: blur(8px) saturate(200%);
+    backdrop-filter: blur(8px) saturate(200%);
+    margin: 0 10px 10px;
+    padding: 5px 10px;
     text-decoration: none;
     text-align: right;
     font-weight: 400;
-    font-size: 24px;
-    line-height: 26px;
+    font-size: 20px;
+    line-height: 25px;
     color: #FFF;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.title::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.3);
 }
 
 .title:hover {
@@ -305,6 +436,7 @@ hr {
     line-height: 14px;
     font-style: italic;
     opacity: .6;
+    margin-bottom: 4px;
 }
 
 .artist:hover .title {
@@ -320,13 +452,13 @@ hr {
     /* Title is always visible but tiles are not darkened by default */
     
     h1 {
-        font-size: 32px;
-        line-height: 40px;
+        font-size: 20px;
+        line-height: 30px;
     }
     
     h2 {
-        font-size: 18px;
-        line-height: 26px;
+        font-size: 14px;
+        line-height: 20px;
     }
 }
 
@@ -338,15 +470,15 @@ input[type="text"] {
     background: #999;
     background: rgba(255,255,255,0.25);
     font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 18px;
-    line-height: 18px;
-    padding: 10px 12px;
-    margin: 0;
-    min-width: 180px;
+    font-size: 15px;
+    line-height: 15px;
+    padding: 10px 10px;
+    margin: 0 5px;
+    min-width: 150px;
     color: #FFF;
     text-align: left;
     font-weight: 400;
-    border-radius: 4px;
+    border-radius: 5px;
 }
 
 input[type="text"]:focus {
@@ -361,22 +493,26 @@ input[type="text"]::placeholder {
     color: rgba(255,255,255,0.5);
 }
 
+input[type="text"]:focus::placeholder {
+    color: rgba(255,255,255,0.8);
+}
+
 @media screen and (max-width: 480px) {
     input[type="text"] {
         display: block;
         margin: 10px auto;
-        width: 80%;
+        width: 75%;
     }
 }
 
 /*  Transitions
 ----------------------------------------------------- */
 a, .title, .dark, input {
-    -webkit-transition: all .2s ease-out;
-    -moz-transition: all .2s ease-out;
-    -ms-transition: all .2s ease-out;
-    -o-transition: all .2s ease-out;
-    transition: all .2s ease-out;
+    -webkit-transition: all 0.2s ease-out;
+    -moz-transition: all 0.2s ease-out;
+    -ms-transition: all 0.2s ease-out;
+    -o-transition: all 0.2s ease-out;
+    transition: all 0.2s ease-out;
 }
 
 /*  Error States
@@ -442,11 +578,15 @@ a, .title, .dark, input {
 /*  Footer
 ----------------------------------------------------- */
 footer {
-    padding: 15px 20px 35px;
-    margin: 40px -30px -40px;
-    background: rgba(0,0,0,.35);
+    padding: 30px 20px;
+    margin: 25px -20px -25px;
+    background: linear-gradient(to top, transparent 0%, rgba(0,0,0,.35) 30%, rgba(0,0,0,.5) 100%);
     text-align: center;
     margin-top: auto;
+}
+
+footer hr { 
+    margin: 15px 0;
 }
 
 footer p {
@@ -460,7 +600,7 @@ footer p {
 }
 
 .footer-copyright {
-    margin-bottom: 6px;
+    margin-bottom: 5px;
 }
 
 .footer-data {
@@ -476,7 +616,7 @@ footer p {
     .footer-data {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 5px;
     }
     
     .footer-data .data-sep {
@@ -495,30 +635,30 @@ footer p {
 ----------------------------------------------------- */
 .image-sources-config {
     border: none;
-    margin: 0 0 15px 0;
-    padding: 0 0 15px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.25);
+    margin: 0;
+    padding: 0;
     font-size: 13px;
     display: flex;
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    margin-bottom: -5px;
 }
 
 .image-sources-config .config-label {
     font-weight: normal;
     padding: 0;
     margin: 0;
-    opacity: 0.8;
+    opacity: 0.7;
 }
 
 .image-sources-config label {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     cursor: pointer;
-    opacity: 0.8;
+    opacity: 0.7;
 }
 
 .image-sources-config label:has(input:checked) {
@@ -526,8 +666,8 @@ footer p {
 }
 
 .image-sources-config input[type="radio"] {
-    width: 14px;
-    height: 14px;
+    width: 10px;
+    height: 10px;
     cursor: pointer;
     margin: 0;
 }
@@ -537,9 +677,11 @@ footer p {
     .image-sources-config {
         flex-direction: column;
         gap: 0;
+        margin-bottom: 20px;
     }
     
     .image-sources-config .config-label {
-        margin-bottom: 4px;
+        margin-bottom: 5px;
     }
 }
+
