@@ -108,6 +108,12 @@
   // Personality loading animation interval
   let personalityAnimationInterval = null;
 
+  // Auto-rotation state
+  let autoRotationInterval = null;
+  let autoRotationSourceIndex = 0;
+  let autoRotationDirection = 1; // 1 = forward, -1 = backward
+  let availableSources = []; // Sources that have been fully loaded
+
   /**
    * Analyze artist data to generate a music personality headline
    * Uses TheAudioDB genre/style/mood data with Last.fm tags as fallback
@@ -973,6 +979,9 @@
       // Hide rate limit note when all images are loaded
       showRateLimitNote(false);
       
+      // Mark primary source as available for rotation
+      addAvailableSource(CONFIG.imageSources[0]);
+      
       // Prefetch images from other sources in background for instant switching
       prefetchOtherSources(artists);
     });
@@ -1034,6 +1043,9 @@
           preloadImage(imageUrl).catch(() => {});
         }
       }
+      
+      // This source is now fully loaded - add to available sources for rotation
+      addAvailableSource(source);
     }
   }
 
@@ -1042,6 +1054,12 @@
    */
   async function loadUser(username) {
     const sanitizedUsername = sanitize(username);
+    
+    // Stop any existing auto-rotation and reset available sources
+    stopAutoRotation();
+    availableSources = [];
+    autoRotationSourceIndex = 0;
+    autoRotationDirection = 1;
     
     updateHeaderSubtitle(username);
     hidePersonality();
@@ -1174,16 +1192,105 @@
         tile.classList.add('image-loaded');
         tile.style.removeProperty('--crossfade-image');
         resolve();
-      }, 400); // Match CSS transition duration
+      }, 1000); // Match CSS transition duration (1s)
     });
+  }
+
+  /**
+   * Stop auto-rotation of images
+   */
+  function stopAutoRotation() {
+    if (autoRotationInterval) {
+      clearInterval(autoRotationInterval);
+      autoRotationInterval = null;
+    }
+  }
+
+  /**
+   * Start auto-rotation of images between available sources
+   * Cycles: 1 → 2 → 3 → 2 → 1 → 2 → 3 → ...
+   */
+  function startAutoRotation() {
+    // Don't start if already running or less than 2 sources available
+    if (autoRotationInterval || availableSources.length < 2) return;
+    
+    // Start at the first source
+    autoRotationSourceIndex = 0;
+    autoRotationDirection = 1;
+    
+    // Rotate every 2.5 seconds
+    autoRotationInterval = setInterval(() => {
+      // Move to next source
+      autoRotationSourceIndex += autoRotationDirection;
+      
+      // Bounce at ends
+      if (autoRotationSourceIndex >= availableSources.length - 1) {
+        autoRotationDirection = -1;
+      } else if (autoRotationSourceIndex <= 0) {
+        autoRotationDirection = 1;
+      }
+      
+      const targetSource = availableSources[autoRotationSourceIndex];
+      rotateToSource(targetSource);
+    }, 2500);
+  }
+
+  /**
+   * Rotate all tiles to show images from a specific source
+   */
+  async function rotateToSource(source) {
+    if (currentArtists.length === 0) return;
+    
+    const tiles = document.querySelectorAll('.artist');
+    const crossfadePromises = [];
+    
+    for (const artist of currentArtists) {
+      const tile = Array.from(tiles).find(t => t.dataset.artist === artist.name);
+      if (!tile) continue;
+      
+      const cacheKey = `${artist.name}:${source}`;
+      const imageUrl = imageCache[cacheKey];
+      
+      // Only crossfade if we have a different image
+      if (imageUrl && tile.style.backgroundImage !== `url(${imageUrl})` && tile.style.backgroundImage !== `url("${imageUrl}")`) {
+        crossfadePromises.push(crossfadeTile(tile, imageUrl));
+      }
+    }
+    
+    await Promise.all(crossfadePromises);
+    
+    // Update radio button to reflect current source (visual feedback)
+    const radio = document.querySelector(`.image-sources-config input[value="${source}"]`);
+    if (radio && !radio.checked) {
+      radio.checked = true;
+    }
+  }
+
+  /**
+   * Add a source to available sources and potentially start rotation
+   */
+  function addAvailableSource(source) {
+    if (!availableSources.includes(source)) {
+      availableSources.push(source);
+      
+      // Start rotation once we have 2+ sources
+      if (availableSources.length >= 2 && !autoRotationInterval) {
+        // Small delay before starting rotation
+        setTimeout(startAutoRotation, 2000);
+      }
+    }
   }
 
   /**
    * Handle image source radio button changes
    * Selected source becomes primary, others become fallbacks
    * Prioritizes showing PRIMARY source image, fetches if not cached
+   * Stops auto-rotation when user manually selects a source
    */
   async function handleImageSourceChange() {
+    // Stop auto-rotation when user manually changes source
+    stopAutoRotation();
+    
     const selectedRadio = document.querySelector('.image-sources-config input[type="radio"]:checked');
     if (!selectedRadio) return;
     
