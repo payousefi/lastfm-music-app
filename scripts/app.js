@@ -1239,7 +1239,13 @@
    * Rotate all tiles to show images from a specific source
    */
   async function rotateToSource(source) {
-    if (currentArtists.length === 0) return;
+    // Update radio button to reflect current source (visual feedback)
+    const radio = document.querySelector(`.image-sources-config input[value="${source}"]`);
+    if (radio && !radio.checked) {
+      radio.checked = true;
+    }
+
+    if (currentArtists.length === 0) return;    
     
     const tiles = document.querySelectorAll('.artist');
     const crossfadePromises = [];
@@ -1258,20 +1264,28 @@
     }
     
     await Promise.all(crossfadePromises);
-    
-    // Update radio button to reflect current source (visual feedback)
-    const radio = document.querySelector(`.image-sources-config input[value="${source}"]`);
-    if (radio && !radio.checked) {
-      radio.checked = true;
-    }
   }
 
   /**
    * Add a source to available sources and potentially start rotation
+   * Maintains the same order as CONFIG.imageSources for consistent rotation
    */
   function addAvailableSource(source) {
     if (!availableSources.includes(source)) {
-      availableSources.push(source);
+      // Insert in the correct position to maintain CONFIG.imageSources order
+      const sourceIndex = CONFIG.imageSources.indexOf(source);
+      let insertIndex = availableSources.length; // Default to end
+      
+      // Find the correct position based on CONFIG.imageSources order
+      for (let i = 0; i < availableSources.length; i++) {
+        const existingSourceIndex = CONFIG.imageSources.indexOf(availableSources[i]);
+        if (sourceIndex < existingSourceIndex) {
+          insertIndex = i;
+          break;
+        }
+      }
+      
+      availableSources.splice(insertIndex, 0, source);
       
       // Start rotation once we have 2+ sources
       if (availableSources.length >= 2 && !autoRotationInterval) {
