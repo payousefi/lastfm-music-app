@@ -17,13 +17,14 @@
   <title>Music &mdash; <?php echo $title; ?></title>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
-  <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? This past month&rsquo;s top artists are&hellip;">
+  <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? Over the past month...">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta property="og:image" content="img/screenshot.jpg" />
   <link href="favicon.ico" rel="icon">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;700&family=Lobster&display=swap">
   <link rel="stylesheet" href="stylesheets/reset.css">
   <link rel="stylesheet" href="stylesheets/main.css">
+  <script src="scripts/personality-headlines.js" defer></script>
   <script src="scripts/app.js" defer></script>
 </head>
 
@@ -38,8 +39,7 @@
     <header>
       <h1><a href="/">&#8220;What kind of music do you like?&#8221;</a></h1>
       <h2>
-        Curious about <?php echo $whos; ?> taste in music?<br/>
-        This past month&rsquo;s top artists are&hellip;
+        Curious about <?php echo $whos; ?> taste in music in the last month?<br/>
       </h2>
     </header>
 
@@ -48,22 +48,25 @@
     <p>
       Have your own <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">last.fm</a> account?
       <label for="username" class="visually-hidden">Enter your Last.fm username</label>
-      <span aria-hidden="true">Type in your username: &nbsp;</span>
+      <span aria-hidden="true">Type in your</span>
       <input type="text" id="username" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" aria-label="Last.fm username" placeholder="username"/>
-      <span aria-hidden="true">&nbsp; and press <b>enter</b>.</span>
+      <span aria-hidden="true">and press <b>enter</b>.</span>
     </p>
 
     <hr aria-hidden="true"/>
 
     <!-- Main content area with ARIA live region for dynamic updates -->
     <main id="main-content" role="main">
-      <p class="rate-limit-note">Artist images load progressively to adapt to API rate limiting.</p>
+      <p class="music-personality" style="display:none;" aria-live="polite"></p>
+      <p class="rate-limit-note">Artist images load at slower speeds while adapting to API rate limit.</p>
       <div class="content" style="display:none;" aria-live="polite" aria-atomic="false"></div>
     </main>
 
     <footer>
       <div class="image-sources-config" role="radiogroup" aria-label="Primary image source"></div>
       
+      <hr aria-hidden="true"/>
+
       <div class="footer-content">
         <!-- Copyright group -->
         <p class="footer-copyright">&copy; <?php echo date('Y'); ?> <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a> · designed &amp; developed by Payam</p>

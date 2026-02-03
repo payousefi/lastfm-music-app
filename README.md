@@ -8,6 +8,7 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
 
 ## Features
 
+- Generates a unique music personality headline based on listening habits (mood × genre analysis)
 - Dynamic artist tiles with images from multiple sources
 - Configurable primary image source
 - Adaptive rate limiting for Discogs and MusicBrainz APIs
@@ -40,6 +41,7 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
   - Adaptive rate limiting for Discogs and MusicBrainz APIs
   - History API for SPA navigation
   - WCAG accessibility improvements
+  - Music Personality feature with dynamic headline generation
 
 ## Stack
 
