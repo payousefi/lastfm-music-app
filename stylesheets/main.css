@@ -1,31 +1,6 @@
 /*  Accessibility
 ----------------------------------------------------- */
 
-/* Skip link for keyboard navigation - hidden until focused */
-.skip-link {
-    position: absolute;
-    left: -9999px;
-    top: auto;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    z-index: 100;
-    background: #FFF;
-    color: #000;
-    padding: 10px 15px;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.skip-link:focus {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    width: auto;
-    height: auto;
-    overflow: visible;
-}
-
 /* Visually hidden but accessible to screen readers */
 .visually-hidden {
     position: absolute;
@@ -40,11 +15,19 @@
 }
 
 /* Focus styles for keyboard navigation */
-a:focus,
-input:focus,
-button:focus {
-    outline: 2px solid #FFF;
+a:focus-visible,
+input:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--text-tertiary, rgba(255,255,255,0.7));
     outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Remove default outline for mouse clicks but keep for keyboard */
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+button:focus:not(:focus-visible) {
+    outline: none;
 }
 
 /* Respect reduced motion preference */
@@ -135,7 +118,7 @@ p {
 
 hr {
     background: #FFF;
-    background: rgba(255,255,255,0.25);
+    background: var(--border-subtle, rgba(255,255,255,0.25));
     height: 1px;
     border: 0;
     margin: 20px 0;
@@ -433,6 +416,7 @@ header {
     left: 0;
     right: 0;
     bottom: 0;
+    /* Intentionally use white for blur behavior */
     background: rgba(255,255,255,0.15);
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.3);
@@ -471,7 +455,7 @@ header {
 .username-section {
     padding: 15px 0 20px;
     margin: -15px 0 0;
-    border-bottom: 1px solid rgba(255,255,255,0.25);
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.25));
     line-height: 40px;
 }
 
@@ -495,9 +479,9 @@ header {
 ----------------------------------------------------- */
 input[type="text"] {
     border: 1px solid #666;
-    border: 1px solid rgba(255,255,255,0.45);
+    border: 1px solid var(--border-medium, rgba(255,255,255,0.45));
     background: #999;
-    background: rgba(255,255,255,0.25);
+    background: var(--bg-strong, rgba(255,255,255,0.25));
     font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 15px;
     line-height: 15px;
@@ -512,18 +496,13 @@ input[type="text"] {
 
 input[type="text"]:focus {
     border: 1px solid #333;
-    border: 1px solid rgba(255,255,255,0.65);
+    border: 1px solid var(--border-strong, rgba(255,255,255,0.65));
     background: #666;
-    background: rgba(255,255,255,0.3);
-    outline: none;
+    background: var(--bg-strong, rgba(255,255,255,0.3));
 }
 
 input[type="text"]::placeholder {
-    color: rgba(255,255,255,0.5);
-}
-
-input[type="text"]:focus::placeholder {
-    color: rgba(255,255,255,0.8);
+    color: var(--text-tertiary, rgba(255,255,255,0.7));
 }
 
 @media screen and (max-width: 480px) {
@@ -588,8 +567,8 @@ a, .title, .dark, input {
     content: '';
     width: 48px;
     height: 48px;
-    border: 3px solid rgba(255,255,255,0.2);
-    border-top-color: rgba(255,255,255,0.8);
+    border: 3px solid var(--border-subtle, rgba(255,255,255,0.2));
+    border-top-color: var(--text-secondary, rgba(255,255,255,0.8));
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 20px;
@@ -702,14 +681,22 @@ footer p {
 
 .image-sources-config label:hover {
     color: var(--text-secondary, rgba(255,255,255,0.85));
-    background-color: rgba(255,255,255,0.08);
+    background-color: var(--bg-subtle, rgba(255,255,255,0.08));
 }
 
 .image-sources-config label:has(input:checked) {
     color: #FFF;
-    background-color: rgba(255,255,255,0.12);
-    border-color: rgba(255,255,255,0.25);
+    background-color: var(--bg-medium, rgba(255,255,255,0.12));
+    border-color: var(--border-subtle, rgba(255,255,255,0.25));
 }
+
+/* Show focus outline on label when radio is keyboard-focused */
+.image-sources-config label:has(input:focus-visible) {
+    outline: 2px solid var(--text-tertiary, rgba(255,255,255,0.7));
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
 
 /* Visually hide radio buttons but keep them accessible */
 .image-sources-config input[type="radio"] {

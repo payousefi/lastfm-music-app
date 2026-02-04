@@ -322,6 +322,87 @@
   }
 
   /**
+   * Convert HSL to RGB
+   * @returns {r, g, b} values 0-255
+   */
+  function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = l - c / 2;
+    let r, g, b;
+    
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+    
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255)
+    };
+  }
+
+  /**
+   * Calculate relative luminance per WCAG 2.1
+   * @param {number} r - Red 0-255
+   * @param {number} g - Green 0-255
+   * @param {number} b - Blue 0-255
+   * @returns {number} Relative luminance 0-1
+   */
+  function getRelativeLuminance(r, g, b) {
+    const [rs, gs, bs] = [r, g, b].map(c => {
+      c = c / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+  }
+
+  /**
+   * Calculate contrast ratio between two colors
+   * @returns {number} Contrast ratio (1-21)
+   */
+  function getContrastRatio(l1, l2) {
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  /**
+   * Find minimum lightness for text to achieve target contrast ratio
+   * @param {number} bgH - Background hue
+   * @param {number} bgS - Background saturation
+   * @param {number} bgL - Background lightness
+   * @param {number} textS - Text saturation
+   * @param {number} targetRatio - Target contrast ratio (4.5 for WCAG AA)
+   * @returns {number} Minimum lightness for text
+   */
+  function findMinLightnessForContrast(bgH, bgS, bgL, textS, targetRatio) {
+    const bgRgb = hslToRgb(bgH, bgS, bgL);
+    const bgLum = getRelativeLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+    
+    // Binary search for minimum lightness that achieves target contrast
+    let low = 50, high = 100;
+    while (high - low > 1) {
+      const mid = (low + high) / 2;
+      const textRgb = hslToRgb(bgH, textS, mid);
+      const textLum = getRelativeLuminance(textRgb.r, textRgb.g, textRgb.b);
+      const ratio = getContrastRatio(textLum, bgLum);
+      
+      if (ratio >= targetRatio) {
+        high = mid;
+      } else {
+        low = mid;
+      }
+    }
+    return Math.ceil(high);
+  }
+
+  /**
    * Generate a random HSL color for the background
    * Uses crypto.getRandomValues for better randomness distribution
    * Tuned for vivid colors with good white text contrast (WCAG AA)
@@ -375,18 +456,35 @@
       document.documentElement.style.setProperty('--personality-glow', glowColor);
       
       // Generate tinted text colors based on background hue
-      // Low saturation (8-20%) keeps it readable while adding warmth
-      const textS = Math.min(Math.max(s * 0.25, 8), 20);
+      // Use moderate saturation (15-35%) for noticeable tint
+      // The findMinLightnessForContrast function ensures WCAG compliance by adjusting lightness
+      const textS = Math.min(Math.max(s * 0.4, 15), 35);
       
-      // Text color tiers (replacing opacity-based approach):
-      // --text-primary: 95% lightness (replaces opacity 0.9)
-      // --text-secondary: 88% lightness (replaces opacity 0.8)
-      // --text-tertiary: 78% lightness (replaces opacity 0.7)
-      // --text-muted: 68% lightness (replaces opacity 0.5-0.6)
-      document.documentElement.style.setProperty('--text-primary', `hsl(${h}, ${textS}%, 95%)`);
-      document.documentElement.style.setProperty('--text-secondary', `hsl(${h}, ${textS}%, 88%)`);
-      document.documentElement.style.setProperty('--text-tertiary', `hsl(${h}, ${textS}%, 78%)`);
-      document.documentElement.style.setProperty('--text-muted', `hsl(${h}, ${textS}%, 68%)`);
+      // Calculate minimum lightness values for WCAG AA compliance (4.5:1 contrast)
+      // Each tier has a different target contrast ratio:
+      // --text-primary: 7:1 (WCAG AAA for normal text)
+      // --text-secondary: 4.5:1 (WCAG AA for normal text)
+      // --text-tertiary: 4.5:1 (WCAG AA for normal text)
+      // --text-muted: 3:1 (WCAG AA for large text / UI components)
+      const primaryL = Math.max(findMinLightnessForContrast(h, s, l, textS, 7), 90);
+      const secondaryL = Math.max(findMinLightnessForContrast(h, s, l, textS, 4.5), 80);
+      const tertiaryL = Math.max(findMinLightnessForContrast(h, s, l, textS, 4.5), 70);
+      const mutedL = Math.max(findMinLightnessForContrast(h, s, l, textS, 3), 60);
+      
+      document.documentElement.style.setProperty('--text-primary', `hsl(${h}, ${textS}%, ${primaryL}%)`);
+      document.documentElement.style.setProperty('--text-secondary', `hsl(${h}, ${textS}%, ${secondaryL}%)`);
+      document.documentElement.style.setProperty('--text-tertiary', `hsl(${h}, ${textS}%, ${tertiaryL}%)`);
+      document.documentElement.style.setProperty('--text-muted', `hsl(${h}, ${textS}%, ${mutedL}%)`);
+      
+      // Generate tinted border and background colors
+      // Use same hue but high lightness with varying alpha for subtle tinting
+      const uiL = 95; // Very light for borders/backgrounds
+      document.documentElement.style.setProperty('--border-subtle', `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`);
+      document.documentElement.style.setProperty('--border-medium', `hsla(${h}, ${textS}%, ${uiL}%, 0.45)`);
+      document.documentElement.style.setProperty('--border-strong', `hsla(${h}, ${textS}%, ${uiL}%, 0.65)`);
+      document.documentElement.style.setProperty('--bg-subtle', `hsla(${h}, ${textS}%, ${uiL}%, 0.08)`);
+      document.documentElement.style.setProperty('--bg-medium', `hsla(${h}, ${textS}%, ${uiL}%, 0.15)`);
+      document.documentElement.style.setProperty('--bg-strong', `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`);
     }
   }
 
@@ -1211,7 +1309,6 @@
         contentEl.style.display = 'none';
         contentEl.innerHTML = '';
         loadUser(inputVal);
-        usernameInput.value = '';
       }
     }
   }
