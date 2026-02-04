@@ -1,11 +1,12 @@
 #!/bin/bash
 #
 # Build/deploy script for Last.fm Music App
-# Copies production files to a local destination
+# Copies production files to a local destination using rsync
 #
 # Usage: ./scripts/copy-to-server.sh [destination]
 #
 # If no destination is provided, prompts for one.
+# Uses exclusion list - new files are automatically included.
 #
 
 set -e  # Exit on error
@@ -20,6 +21,19 @@ NC='\033[0m' # No Color
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Files/directories to EXCLUDE from deployment
+# Everything else is automatically included
+EXCLUDES=(
+    ".git"
+    ".gitignore"
+    ".prettierrc"
+    "README.md"
+    "scripts/copy-to-server.sh"
+    ".DS_Store"
+    "*.swp"
+    "*~"
+)
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Last.fm Music App - Build Script     ║${NC}"
@@ -53,26 +67,32 @@ if [ ! -d "$DEST_DIR" ]; then
     fi
 fi
 
+# Build rsync exclude arguments
+RSYNC_EXCLUDES=""
+for exclude in "${EXCLUDES[@]}"; do
+    RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude='$exclude'"
+done
+
 # Show what will be deployed
 echo ""
 echo -e "${YELLOW}Destination:${NC} $DEST_DIR"
 echo ""
-echo "Files to copy:"
-echo "  index.php"
-echo "  favicon.ico"
-echo "  robots.txt"
-echo "  img/og-image.png"
-echo "  stylesheets/reset.css"
-echo "  stylesheets/main.css"
-echo "  scripts/app.js"
-echo "  scripts/personality-headlines.js"
+echo -e "${YELLOW}Excluded files:${NC}"
+for exclude in "${EXCLUDES[@]}"; do
+    echo "  - $exclude"
+done
+echo ""
+
+# Preview what will be copied (dry run)
+echo -e "${YELLOW}Files to copy:${NC}"
+eval rsync -av --dry-run $RSYNC_EXCLUDES "$PROJECT_ROOT/" "$DEST_DIR/" 2>/dev/null | grep -v "^sending\|^total\|^$\|^\./$" | head -30
 echo ""
 
 # Ask about cleaning destination
-echo -e "${YELLOW}Clean destination first?${NC}"
-echo "  y = Delete ALL existing files, then copy fresh (recommended)"
+echo -e "${YELLOW}Sync mode:${NC}"
+echo "  y = Delete files in destination that don't exist in source (--delete)"
 echo "  n = Just overwrite/add files (keeps any extra files)"
-read -p "Clean first? (y/N) " -n 1 -r CLEAN_FIRST
+read -p "Use delete mode? (y/N) " -n 1 -r DELETE_MODE
 echo ""
 
 # Confirm
@@ -84,35 +104,16 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Clean destination if requested
-if [[ $CLEAN_FIRST =~ ^[Yy]$ ]]; then
-    echo ""
-    echo -e "${BLUE}Cleaning destination...${NC}"
-    rm -rf "${DEST_DIR:?}"/*
+# Build final rsync command
+RSYNC_CMD="rsync -av"
+if [[ $DELETE_MODE =~ ^[Yy]$ ]]; then
+    RSYNC_CMD="$RSYNC_CMD --delete"
 fi
 
-# Copy files
+# Copy files using rsync
 echo ""
 echo -e "${BLUE}Copying files...${NC}"
-
-# Root files
-cp "$PROJECT_ROOT/index.php" "$DEST_DIR/"
-cp "$PROJECT_ROOT/favicon.ico" "$DEST_DIR/"
-cp "$PROJECT_ROOT/robots.txt" "$DEST_DIR/"
-
-# Images
-mkdir -p "$DEST_DIR/img"
-cp "$PROJECT_ROOT/img/og-image.png" "$DEST_DIR/img/"
-
-# Stylesheets
-mkdir -p "$DEST_DIR/stylesheets"
-cp "$PROJECT_ROOT/stylesheets/reset.css" "$DEST_DIR/stylesheets/"
-cp "$PROJECT_ROOT/stylesheets/main.css" "$DEST_DIR/stylesheets/"
-
-# Scripts (only production JS)
-mkdir -p "$DEST_DIR/scripts"
-cp "$PROJECT_ROOT/scripts/app.js" "$DEST_DIR/scripts/"
-cp "$PROJECT_ROOT/scripts/personality-headlines.js" "$DEST_DIR/scripts/"
+eval $RSYNC_CMD $RSYNC_EXCLUDES "$PROJECT_ROOT/" "$DEST_DIR/"
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
