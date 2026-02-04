@@ -45,21 +45,21 @@
 
     <hr aria-hidden="true"/>
 
-    <p>
-      Have your own <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">last.fm</a> account?
-      <label for="username" class="visually-hidden">Enter your Last.fm username</label>
-      <span aria-hidden="true">Type in your</span>
-      <input type="text" id="username" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" aria-label="Last.fm username" placeholder="username"/>
-      <span aria-hidden="true">and press <b>enter</b>.</span>
-    </p>
-
-    <hr aria-hidden="true"/>
+    <div class="username-section">
+      <p>
+        Have your own <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">last.fm</a> account?
+        <label for="username" class="visually-hidden">Enter your Last.fm username</label>
+        <span aria-hidden="true">Type in your</span>
+        <input type="text" id="username" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" aria-label="Last.fm username" placeholder="username"/>
+        <span aria-hidden="true">and press <b>enter</b>.</span>
+      </p>
+    </div>
 
     <!-- Main content area with ARIA live region for dynamic updates -->
     <main id="main-content" role="main">
-      <p class="music-personality" style="display:none;" aria-live="polite"></p>
+      <p class="music-personality" aria-live="polite"></p>
       <p class="rate-limit-note">Artist images load at slower speeds while adapting to API rate limit.</p>
-      <div class="content" style="display:none;" aria-live="polite" aria-atomic="false"></div>
+      <div class="content" aria-live="polite" aria-atomic="false"></div>
     </main>
 
     <footer>
