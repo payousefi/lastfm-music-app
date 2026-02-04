@@ -207,28 +207,72 @@
   }
 
   /**
+   * Rolling text word pool - tracks used words to avoid repetition within a session
+   */
+  const ROLLING_PARTICIPLES = [
+    // Analytical
+    'Analyzing',
+    'Processing',
+    'Decoding',
+    'Interpreting',
+    'Calculating',
+    'Computing',
+    // Discovery
+    'Discovering',
+    'Exploring',
+    'Uncovering',
+    'Investigating',
+    'Researching',
+    'Excavating',
+    // Sensory/Emotional
+    'Vibing',
+    'Listening',
+    'Sensing',
+    'Feeling',
+    'Absorbing',
+    'Channeling',
+    'Tuning in',
+    // Creative
+    'Curating',
+    'Contemplating',
+    'Pondering',
+    'Imagining',
+    'Conjuring',
+    // Playful
+    'Jamming',
+    'Grooving',
+    'Syncing',
+    'Harmonizing',
+    'Resonating',
+    'Calibrating',
+    'Brewing',
+    'Marinating'
+  ];
+  
+  let rollingWordsRemaining = [];
+  
+  /**
+   * Reset the rolling word pool for a new loading session
+   */
+  function resetRollingWords() {
+    rollingWordsRemaining = [...ROLLING_PARTICIPLES];
+  }
+  
+  /**
    * Generate random present participle for loading animation
+   * Picks from remaining unused words, resets pool when exhausted
    */
   function generateRollingText() {
-    const participles = [
-      'Analyzing',
-      'Discovering',
-      'Exploring',
-      'Decoding',
-      'Vibing',
-      'Listening',
-      'Sensing',
-      'Feeling',
-      'Curating',
-      'Uncovering',
-      'Interpreting',
-      'Channeling',
-      'Absorbing',
-      'Processing',
-      'Contemplating'
-    ];
+    // If pool is empty, refill it
+    if (rollingWordsRemaining.length === 0) {
+      rollingWordsRemaining = [...ROLLING_PARTICIPLES];
+    }
     
-    return participles[Math.floor(Math.random() * participles.length)] + '...';
+    // Pick and remove a random word from remaining pool
+    const index = Math.floor(Math.random() * rollingWordsRemaining.length);
+    const word = rollingWordsRemaining.splice(index, 1)[0];
+    
+    return word + '...';
   }
 
   /**
@@ -237,10 +281,11 @@
   function showPersonalityLoading(username) {
     if (!personalityEl) return;
     
-    // Clear any existing animation
+    // Clear any existing animation and reset word pool for fresh session
     if (personalityAnimationInterval) {
-      clearInterval(personalityAnimationInterval);
+      clearTimeout(personalityAnimationInterval);
     }
+    resetRollingWords();
     
     // Generate possessive text based on username
     const isDefault = username === CONFIG.defaultUsername;
@@ -251,13 +296,20 @@
     personalityEl.classList.remove('visible');
     personalityEl.classList.add('loading');
     
-    // Start rolling text animation (slower pace - 400ms)
+    // Start rolling text animation with variable timing (feels more organic)
     const rollingEl = personalityEl.querySelector('.personality-rolling');
     if (rollingEl) {
       rollingEl.textContent = generateRollingText();
-      personalityAnimationInterval = setInterval(() => {
-        rollingEl.textContent = generateRollingText();
-      }, 400);
+      
+      // Use recursive setTimeout with random delays (300-600ms) for organic "thinking" feel
+      const scheduleNextWord = () => {
+        const delay = 300 + Math.random() * 300; // 300-600ms
+        personalityAnimationInterval = setTimeout(() => {
+          rollingEl.textContent = generateRollingText();
+          scheduleNextWord();
+        }, delay);
+      };
+      scheduleNextWord();
     }
   }
 
@@ -269,7 +321,7 @@
     
     // Stop the rolling animation
     if (personalityAnimationInterval) {
-      clearInterval(personalityAnimationInterval);
+      clearTimeout(personalityAnimationInterval);
       personalityAnimationInterval = null;
     }
     
@@ -304,7 +356,7 @@
     
     // Stop the rolling animation
     if (personalityAnimationInterval) {
-      clearInterval(personalityAnimationInterval);
+      clearTimeout(personalityAnimationInterval);
       personalityAnimationInterval = null;
     }
     
@@ -1089,10 +1141,12 @@
       const validData = personalityData.filter(d => d.genre || d.style || d.mood);
       if (validData.length > 0) {
         const analysis = analyzePersonality(validData);
-        // Add a minimum 3 second delay so the rolling text animation plays
+        // Add a variable delay (2.5-4s) so the rolling text animation plays
+        // Variable timing feels more organic, like the app is actually "thinking"
+        const thinkingDelay = 2500 + Math.random() * 1500;
         setTimeout(() => {
           displayPersonality(analysis.headline);
-        }, 3000);
+        }, thinkingDelay);
       }
     }
     
