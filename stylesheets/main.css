@@ -279,12 +279,26 @@ header {
 
 /*  Artist tiles
 ----------------------------------------------------- */
+
+/* Anchor wrapper for artist tiles - needs block display for proper focus outline */
+.content a:has(.artist) {
+    display: inline-block;
+    border-radius: 8px;
+    margin: 15px;
+    text-decoration: none;
+}
+
+/* Override default focus styles for artist tile links */
+.content a:has(.artist):focus-visible {
+    outline: 2px solid var(--text-tertiary, rgba(255, 255, 255, 0.7));
+    outline-offset: 3px;
+}
+
 .artist {
     position: relative;
-    display: inline-block;
+    display: block;
     width: 250px;
     height: 250px;
-    margin: 15px;
     background-color: rgba(0, 0, 0, 0.5);
     background-position: center center;
     background-size: cover;
