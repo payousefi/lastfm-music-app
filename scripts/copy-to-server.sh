@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Build/deploy script for Last.fm Music App
-# Copies production files to a local destination using rsync
+# Copies production files to a local destination
 #
 # Usage: ./scripts/copy-to-server.sh [destination]
 #
@@ -22,7 +22,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Files/directories to EXCLUDE from deployment
+# Files/directories to EXCLUDE from deployment (relative to project root)
 # Everything else is automatically included
 EXCLUDES=(
     ".git"
@@ -30,10 +30,18 @@ EXCLUDES=(
     ".prettierrc"
     "README.md"
     "scripts/copy-to-server.sh"
-    ".DS_Store"
-    "*.swp"
-    "*~"
 )
+
+# Function to check if a path should be excluded
+should_exclude() {
+    local path="$1"
+    for exclude in "${EXCLUDES[@]}"; do
+        if [[ "$path" == "$exclude" || "$path" == "$exclude/"* ]]; then
+            return 0  # true, should exclude
+        fi
+    done
+    return 1  # false, should not exclude
+}
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Last.fm Music App - Build Script     ║${NC}"
@@ -67,32 +75,47 @@ if [ ! -d "$DEST_DIR" ]; then
     fi
 fi
 
-# Build rsync exclude arguments
-RSYNC_EXCLUDES=""
-for exclude in "${EXCLUDES[@]}"; do
-    RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude='$exclude'"
-done
+# Build list of files to copy
+cd "$PROJECT_ROOT"
+FILES_TO_COPY=()
+while IFS= read -r -d '' file; do
+    # Get relative path
+    rel_path="${file#./}"
+    
+    # Skip excluded files
+    if should_exclude "$rel_path"; then
+        continue
+    fi
+    
+    # Skip hidden files (except specific ones we want)
+    basename=$(basename "$rel_path")
+    if [[ "$basename" == .* && "$basename" != ".htaccess" ]]; then
+        continue
+    fi
+    
+    FILES_TO_COPY+=("$rel_path")
+done < <(find . -type f -print0)
 
 # Show what will be deployed
 echo ""
 echo -e "${YELLOW}Destination:${NC} $DEST_DIR"
 echo ""
-echo -e "${YELLOW}Excluded files:${NC}"
+echo -e "${YELLOW}Excluded:${NC}"
 for exclude in "${EXCLUDES[@]}"; do
     echo "  - $exclude"
 done
 echo ""
-
-# Preview what will be copied (dry run)
-echo -e "${YELLOW}Files to copy:${NC}"
-eval rsync -av --dry-run $RSYNC_EXCLUDES "$PROJECT_ROOT/" "$DEST_DIR/" 2>/dev/null | grep -v "^sending\|^total\|^$\|^\./$" | head -30
+echo -e "${YELLOW}Files to copy (${#FILES_TO_COPY[@]} files):${NC}"
+for file in "${FILES_TO_COPY[@]}"; do
+    echo "  $file"
+done
 echo ""
 
 # Ask about cleaning destination
-echo -e "${YELLOW}Sync mode:${NC}"
-echo "  y = Delete files in destination that don't exist in source (--delete)"
+echo -e "${YELLOW}Clean destination first?${NC}"
+echo "  y = Delete ALL existing files, then copy fresh (recommended)"
 echo "  n = Just overwrite/add files (keeps any extra files)"
-read -p "Use delete mode? (y/N) " -n 1 -r DELETE_MODE
+read -p "Clean first? (y/N) " -n 1 -r CLEAN_FIRST
 echo ""
 
 # Confirm
@@ -104,16 +127,28 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Build final rsync command
-RSYNC_CMD="rsync -av"
-if [[ $DELETE_MODE =~ ^[Yy]$ ]]; then
-    RSYNC_CMD="$RSYNC_CMD --delete"
+# Clean destination if requested
+if [[ $CLEAN_FIRST =~ ^[Yy]$ ]]; then
+    echo ""
+    echo -e "${BLUE}Cleaning destination...${NC}"
+    rm -rf "${DEST_DIR:?}"/*
 fi
 
-# Copy files using rsync
+# Copy files
 echo ""
 echo -e "${BLUE}Copying files...${NC}"
-eval $RSYNC_CMD $RSYNC_EXCLUDES "$PROJECT_ROOT/" "$DEST_DIR/"
+
+for file in "${FILES_TO_COPY[@]}"; do
+    # Create directory structure if needed
+    dir=$(dirname "$file")
+    if [ "$dir" != "." ]; then
+        mkdir -p "$DEST_DIR/$dir"
+    fi
+    
+    # Copy the file
+    cp "$PROJECT_ROOT/$file" "$DEST_DIR/$file"
+    echo "  Copied: $file"
+done
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
