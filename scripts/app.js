@@ -112,6 +112,7 @@
 
   // Auto-rotation state
   let autoRotationInterval = null;
+  let autoRotationStartTimeout = null; // Pending timeout before rotation starts
   let autoRotationSourceIndex = 0;
   let autoRotationDirection = 1; // 1 = forward, -1 = backward
   let availableSources = []; // Sources that have been fully loaded
@@ -1069,12 +1070,12 @@
   /**
    * Get the best image source for a tile based on fallback order
    * Returns the source that has an image, following the fallback order
+   * @param {boolean} allowFallback - If false, only returns primarySource if it has an image
    */
-  function getBestSourceForTile(tile, primarySource) {
-    const fallbackOrder = [
-      primarySource,
-      ...ORIGINAL_SOURCE_ORDER.filter((s) => s !== primarySource)
-    ];
+  function getBestSourceForTile(tile, primarySource, allowFallback = true) {
+    const fallbackOrder = allowFallback
+      ? [primarySource, ...ORIGINAL_SOURCE_ORDER.filter((s) => s !== primarySource)]
+      : [primarySource];
 
     for (const source of fallbackOrder) {
       const layer = tile.querySelector(`.source-layer[data-source="${source}"]`);
@@ -1083,6 +1084,14 @@
       }
     }
     return null; // No source has an image
+  }
+
+  /**
+   * Check if a source has finished loading for all artists
+   * A source is considered "loaded" when it's in availableSources
+   */
+  function isSourceFullyLoaded(source) {
+    return availableSources.includes(source);
   }
 
   /**
@@ -1556,8 +1565,13 @@
 
   /**
    * Stop auto-rotation of images
+   * Also cancels any pending timeout to start rotation
    */
   function stopAutoRotation() {
+    if (autoRotationStartTimeout) {
+      clearTimeout(autoRotationStartTimeout);
+      autoRotationStartTimeout = null;
+    }
     if (autoRotationInterval) {
       clearInterval(autoRotationInterval);
       autoRotationInterval = null;
@@ -1626,6 +1640,7 @@
   /**
    * Add a source to available sources and potentially start rotation
    * Maintains the same order as CONFIG.imageSources for consistent rotation
+   * Also updates any tiles waiting for this source (showing loading state)
    */
   function addAvailableSource(source) {
     if (!availableSources.includes(source)) {
@@ -1644,10 +1659,37 @@
 
       availableSources.splice(insertIndex, 0, source);
 
+      // If this source is the currently selected primary source,
+      // update any tiles that were showing loading state
+      const currentPrimarySource = CONFIG.imageSources[0];
+      if (source === currentPrimarySource && currentArtists.length > 0) {
+        const tiles = document.querySelectorAll('.artist');
+        for (const artist of currentArtists) {
+          const tile = Array.from(tiles).find((t) => t.dataset.artist === artist.name);
+          if (!tile) continue;
+
+          // Only update tiles that are in loading state
+          if (
+            tile.classList.contains('loading-image') ||
+            tile.classList.contains('loading-active')
+          ) {
+            const bestSource = getBestSourceForTile(tile, currentPrimarySource, true);
+            if (bestSource) {
+              showSourceLayer(tile, bestSource);
+              tile.classList.remove('loading-image', 'loading-active', 'no-image');
+              tile.classList.add('image-loaded');
+            }
+          }
+        }
+      }
+
       // Start rotation once we have 2+ sources
-      if (availableSources.length >= 2 && !autoRotationInterval) {
+      if (availableSources.length >= 2 && !autoRotationInterval && !autoRotationStartTimeout) {
         // Small delay before starting rotation
-        setTimeout(startAutoRotation, 2000);
+        autoRotationStartTimeout = setTimeout(() => {
+          autoRotationStartTimeout = null;
+          startAutoRotation();
+        }, 2000);
       }
     }
   }
@@ -1655,7 +1697,7 @@
   /**
    * Handle image source radio button changes
    * Switches visible source layer on each tile using crossfade
-   * Uses fallback order if primary source has no image
+   * If the selected source is still loading, shows loading state instead of falling back
    * Stops auto-rotation when user manually selects a source
    */
   async function handleImageSourceChange() {
@@ -1676,6 +1718,10 @@
     // Update config
     CONFIG.imageSources = newSources;
 
+    // Check if the selected source has fully loaded
+    // If not, we should show loading states instead of falling back
+    const sourceFullyLoaded = isSourceFullyLoaded(primarySource);
+
     // Update images if we have artists loaded
     if (currentArtists.length > 0) {
       const tiles = document.querySelectorAll('.artist');
@@ -1685,18 +1731,25 @@
         const tile = Array.from(tiles).find((t) => t.dataset.artist === artist.name);
         if (!tile) continue;
 
-        // Find the best source to show (primary or fallback)
-        const bestSource = getBestSourceForTile(tile, primarySource);
+        // If source is still loading, only use primary source (no fallback)
+        // This shows loading state for tiles that don't have the image yet
+        const allowFallback = sourceFullyLoaded;
+        const bestSource = getBestSourceForTile(tile, primarySource, allowFallback);
 
         if (bestSource) {
           // Crossfade to the best source layer
           showSourceLayer(tile, bestSource);
-          tile.classList.remove('no-image');
+          tile.classList.remove('no-image', 'loading-image', 'loading-active');
           tile.classList.add('image-loaded');
-        } else {
-          // No source has an image - show no-image state
+        } else if (!sourceFullyLoaded) {
+          // Source is still loading - show loading state
           showSourceLayer(tile, null);
-          tile.classList.remove('image-loaded');
+          tile.classList.remove('image-loaded', 'no-image');
+          tile.classList.add('loading-image');
+        } else {
+          // Source is fully loaded but has no image - show no-image state
+          showSourceLayer(tile, null);
+          tile.classList.remove('image-loaded', 'loading-image', 'loading-active');
           tile.classList.add('no-image');
         }
       }
