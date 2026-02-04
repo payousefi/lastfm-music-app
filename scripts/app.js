@@ -1096,6 +1096,8 @@
 
   /**
    * Show a specific source layer on a tile (with crossfade)
+   * @param {Element} tile - The tile element
+   * @param {string|null} sourceToShow - Source to show, or null to hide all
    */
   function showSourceLayer(tile, sourceToShow) {
     const layers = tile.querySelectorAll('.source-layer');
@@ -1133,13 +1135,31 @@
 
   /**
    * Reveal a tile after its primary source image loads
+   * If the current primary source hasn't fully loaded yet, keep tile in loading state
+   * unless the tile has an image for the current primary source
    */
-  function revealTile(tile, primarySource) {
+  function revealTile(tile, loadedSource) {
+    const currentPrimarySource = CONFIG.imageSources[0];
+    const primarySourceLoaded = isSourceFullyLoaded(currentPrimarySource);
+
+    // Check if this tile has an image for the current primary source
+    const primaryLayer = tile.querySelector(`.source-layer[data-source="${currentPrimarySource}"]`);
+    const hasPrimaryImage = primaryLayer && primaryLayer.dataset.hasImage === 'true';
+
+    // If primary source hasn't fully loaded and this tile doesn't have its image yet,
+    // keep the tile in loading state
+    if (!primarySourceLoaded && !hasPrimaryImage) {
+      // Keep in loading state - don't reveal yet
+      return;
+    }
+
     // Remove loading states
     tile.classList.remove('loading-image', 'loading-active');
 
     // Find the best source to show (primary or fallback)
-    const bestSource = getBestSourceForTile(tile, primarySource);
+    // Allow fallback only if primary source has fully loaded
+    const allowFallback = primarySourceLoaded;
+    const bestSource = getBestSourceForTile(tile, currentPrimarySource, allowFallback);
 
     if (bestSource) {
       showSourceLayer(tile, bestSource);
@@ -1153,9 +1173,8 @@
    * Reveal a row of tiles with fade-in effect
    */
   function revealRow(tiles) {
-    const primarySource = CONFIG.imageSources[0];
     tiles.forEach(({ tile, success, source }) => {
-      revealTile(tile, primarySource);
+      revealTile(tile, source);
     });
   }
 
