@@ -30,9 +30,6 @@
 
 <body>
 
-  <!-- Skip link for keyboard navigation -->
-  <a href="#main-content" class="skip-link">Skip to main content</a>
-
   <!-- main wrapper -->
   <div id="wrap">
     
@@ -56,7 +53,7 @@
     </div>
 
     <!-- Main content area with ARIA live region for dynamic updates -->
-    <main id="main-content" role="main">
+    <main role="main">
       <p class="music-personality" aria-live="polite"></p>
       <p class="rate-limit-note">Artist images load at slower speeds while adapting to API rate limit.</p>
       <div class="content" aria-live="polite" aria-atomic="false"></div>
