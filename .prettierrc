@@ -1,0 +1,19 @@
+{
+  "tabWidth": 2,
+  "useTabs": false,
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "none",
+  "bracketSpacing": true,
+  "printWidth": 100,
+  "htmlWhitespaceSensitivity": "ignore",
+  "overrides": [
+    {
+      "files": "*.css",
+      "options": {
+        "tabWidth": 4,
+        "singleQuote": false
+      }
+    }
+  ]
+}

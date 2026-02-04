@@ -18,7 +18,7 @@
 a:focus-visible,
 input:focus-visible,
 button:focus-visible {
-    outline: 2px solid var(--text-tertiary, rgba(255,255,255,0.7));
+    outline: 2px solid var(--text-tertiary, rgba(255, 255, 255, 0.7));
     outline-offset: 2px;
     border-radius: 2px;
 }
@@ -57,10 +57,10 @@ html {
 
 body {
     background: #000;
-    font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: "Karla", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 18px;
     line-height: 30px;
-    color: #FFF;
+    color: #fff;
     text-align: center;
     width: 100%;
     min-height: 100%;
@@ -70,15 +70,15 @@ body {
 }
 
 h1 {
-    font-family: 'Lobster', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: "Lobster", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 32px;
     line-height: 40px;
-    color: var(--text-secondary, rgba(255,255,255,0.8));
+    color: var(--text-secondary, rgba(255, 255, 255, 0.8));
     transition: color 0.2s ease-out;
 }
 
 h1:hover {
-    color: #FFF;
+    color: #fff;
 }
 
 h2 {
@@ -86,30 +86,32 @@ h2 {
     font-size: 18px;
     line-height: 26px;
     font-weight: 400;
-    color: var(--text-primary, rgba(255,255,255,0.9));
+    color: var(--text-primary, rgba(255, 255, 255, 0.9));
 }
 
 @media screen and (max-width: 480px) {
     /* Title is always visible but tiles are not darkened by default */
-    
+
     h1 {
-        font-size: 30px;
+        font-size: 32px;
         line-height: 30px;
     }
 }
 
-a, a:hover {
-    color: #FFF;
+a,
+a:hover {
+    color: #fff;
     text-decoration: underline;
 }
 
-h1 a, h1 a:hover {
+h1 a,
+h1 a:hover {
     text-decoration: none;
     color: inherit;
 }
 
 p {
-    color: var(--text-primary, rgba(255,255,255,0.9));
+    color: var(--text-primary, rgba(255, 255, 255, 0.9));
     font-size: 16px;
     line-height: 25px;
     font-weight: 400;
@@ -117,8 +119,8 @@ p {
 }
 
 hr {
-    background: #FFF;
-    background: var(--border-subtle, rgba(255,255,255,0.25));
+    background: #fff;
+    background: var(--border-subtle, rgba(255, 255, 255, 0.25));
     height: 1px;
     border: 0;
     margin: 20px 0;
@@ -157,11 +159,11 @@ header {
 /*  Music Personality Headline - Hero element, larger than site title
 ----------------------------------------------------- */
 .music-personality {
-    font-family: 'Lobster', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: "Lobster", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 50px;
     line-height: 50px;
     text-align: center;
-    margin: 45px auto 15px;
+    margin: 50px auto 10px;
     padding: 0 15px;
     visibility: hidden;
     opacity: 0;
@@ -176,25 +178,25 @@ header {
 
 .music-personality .personality-label {
     display: block;
-    font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: "Karla", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 14px;
     line-height: 20px;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: var(--text-secondary, rgba(255,255,255,0.8));
+    color: var(--text-secondary, rgba(255, 255, 255, 0.8));
     margin-bottom: 5px;
 }
 
 /* Fixed-height container for rolling/text to prevent layout shift */
 .music-personality .personality-content {
     display: block;
-    height: 50px;
+    min-height: 65px;
 }
 
 /* Rolling text loading animation */
 .music-personality .personality-rolling {
     display: inline-block;
-    color: var(--text-muted, rgba(255,255,255,0.6));
+    color: var(--text-muted, rgba(255, 255, 255, 0.6));
     font-style: italic;
     font-size: 40px;
     transition: opacity 0.3s ease-out;
@@ -219,8 +221,9 @@ header {
     display: inline;
     animation: personalityReveal 2s ease-out forwards;
     /* Glow uses CSS variable set by JS, falls back to white */
-    text-shadow: 0 0 10px var(--personality-glow, rgba(255, 255, 255, 0.4)),
-                 0 0 30px var(--personality-glow, rgba(255, 255, 255, 0.4));
+    text-shadow:
+        0 0 10px var(--personality-glow, rgba(255, 255, 255, 0.4)),
+        0 0 30px var(--personality-glow, rgba(255, 255, 255, 0.4));
 }
 
 @keyframes personalityReveal {
@@ -236,13 +239,8 @@ header {
 
 @media screen and (max-width: 480px) {
     .music-personality {
-      margin-bottom: 25px;
+        margin-top: 50px;
     }
-    
-    .music-personality .personality-content {
-        height: 40px;
-    }
-    
     .music-personality .personality-label {
         font-size: 14px;
     }
@@ -255,7 +253,7 @@ header {
     margin: 0 auto;
     visibility: hidden;
     opacity: 0;
-    color: var(--text-muted, rgba(255,255,255,0.5));
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
     transition: opacity 0.3s ease-out;
 }
 
@@ -287,13 +285,14 @@ header {
     width: 250px;
     height: 250px;
     margin: 15px;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(0, 0, 0, 0.5);
     background-position: center center;
     background-size: cover;
-    -webkit-box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
-    -moz-box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25);
-    box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25),
-                inset 0 0 0 1px rgba(255,255,255,0.1);
+    -webkit-box-shadow: 2px 2px 4px 0 rgba(0, 0, 0, 0.25);
+    -moz-box-shadow: 2px 2px 4px 0 rgba(0, 0, 0, 0.25);
+    box-shadow:
+        2px 2px 4px 0 rgba(0, 0, 0, 0.25),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
     /* Prevent any layout shift during crossfade */
     overflow: hidden;
     border-radius: 8px;
@@ -302,9 +301,9 @@ header {
 
 /* Shimmer border effect on hover */
 .artist:hover {
-    box-shadow: 2px 2px 4px 0 rgba(0,0,0,0.25),
-                inset 0 0 0 1px rgba(255,255,255,0.1);
-                
+    box-shadow:
+        2px 2px 4px 0 rgba(0, 0, 0, 0.25),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 /* Source layer divs for smooth crossfade transitions between image sources */
@@ -331,7 +330,7 @@ header {
 .artist.no-image::after,
 .artist.loading-image::after,
 .artist.loading-active::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 50%;
     left: 50%;
@@ -357,15 +356,23 @@ header {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 0.7; }
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* No image found - star uses CSS variable for background color (set by JS) */
 .artist.no-image::after {
     opacity: 1;
     /* Star color comes from CSS variable --bg-color set by JS, fallback to dark */
-    background-image: var(--star-bg, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='%23333' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E"));
+    background-image: var(
+        --star-bg,
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='%23333' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E")
+    );
 }
 
 /*  Hover effect on artist tiles
@@ -382,7 +389,7 @@ header {
 }
 
 .artist:hover .dark {
-    opacity: .35;
+    opacity: 0.35;
 }
 
 /*  Boxed title styling
@@ -404,26 +411,26 @@ header {
     font-weight: 400;
     font-size: 20px;
     line-height: 25px;
-    color: #FFF;
+    color: #fff;
     border-radius: 4px;
     overflow: hidden;
 }
 
 .title::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     /* Intentionally use white for blur behavior */
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .title:hover {
-    opacity: .8;
+    opacity: 0.8;
     text-decoration: none;
 }
 
@@ -433,7 +440,7 @@ header {
     font-size: 14px;
     line-height: 14px;
     font-style: italic;
-    opacity: .6;
+    opacity: 0.6;
     margin-bottom: 4px;
 }
 
@@ -442,20 +449,18 @@ header {
 }
 
 @media screen and (max-width: 480px) {
-
     /* On mobile, dark overlay only shows on hover (via :hover rule above) */
     .title {
         opacity: 1;
     }
 }
 
-
 /*  Username Section (sticky on desktop only)
 ----------------------------------------------------- */
 .username-section {
     padding: 15px 0 20px;
     margin: -15px 0 0;
-    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.25));
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.25));
     line-height: 40px;
 }
 
@@ -479,16 +484,16 @@ header {
 ----------------------------------------------------- */
 input[type="text"] {
     border: 1px solid #666;
-    border: 1px solid var(--border-medium, rgba(255,255,255,0.45));
+    border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.45));
     background: #999;
-    background: var(--bg-strong, rgba(255,255,255,0.25));
-    font-family: 'Karla', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--bg-strong, rgba(255, 255, 255, 0.25));
+    font-family: "Karla", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 15px;
     line-height: 15px;
     padding: 10px 10px;
     margin: 0 5px;
     min-width: 150px;
-    color: #FFF;
+    color: #fff;
     text-align: left;
     font-weight: 400;
     border-radius: 5px;
@@ -496,13 +501,13 @@ input[type="text"] {
 
 input[type="text"]:focus {
     border: 1px solid #333;
-    border: 1px solid var(--border-strong, rgba(255,255,255,0.65));
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.65));
     background: #666;
-    background: var(--bg-strong, rgba(255,255,255,0.3));
+    background: var(--bg-strong, rgba(255, 255, 255, 0.3));
 }
 
 input[type="text"]::placeholder {
-    color: var(--text-tertiary, rgba(255,255,255,0.7));
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
 }
 
 @media screen and (max-width: 480px) {
@@ -515,7 +520,10 @@ input[type="text"]::placeholder {
 
 /*  Transitions
 ----------------------------------------------------- */
-a, .title, .dark, input {
+a,
+.title,
+.dark,
+input {
     -webkit-transition: all 0.2s ease-out;
     -moz-transition: all 0.2s ease-out;
     -ms-transition: all 0.2s ease-out;
@@ -536,7 +544,7 @@ a, .title, .dark, input {
     margin-bottom: 10px;
     font-size: 18px;
     line-height: 30px;
-    color: var(--text-tertiary, rgba(255,255,255,0.7));
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
 }
 
 /*  Loading State for Artist Images - plain background only
@@ -545,43 +553,16 @@ a, .title, .dark, input {
 
 /* Fade-in animation for images */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .artist.image-loaded {
     animation: fadeIn 0.5s ease-in-out;
-}
-
-/*  Loading Spinner
------------------------------------------------------ */
-.loading-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-}
-
-.loading-spinner::before {
-    content: '';
-    width: 48px;
-    height: 48px;
-    border: 3px solid var(--border-subtle, rgba(255,255,255,0.2));
-    border-top-color: var(--text-secondary, rgba(255,255,255,0.8));
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 20px;
-}
-
-.loading-spinner::after {
-    content: 'Loading...';
-    font-size: 16px;
-    opacity: 0.7;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
 }
 
 /*  Footer
@@ -589,11 +570,16 @@ a, .title, .dark, input {
 footer {
     padding: 20px 30px;
     margin: 0 -30px;
-    background: linear-gradient(to top, transparent 0%, rgba(0,0,0,.35) 60%, rgba(0,0,0,.5) 100%);
+    background: linear-gradient(
+        to top,
+        transparent 0%,
+        rgba(0, 0, 0, 0.35) 60%,
+        rgba(0, 0, 0, 0.5) 100%
+    );
     text-align: center;
 }
 
-footer hr { 
+footer hr {
     margin: 15px 0;
 }
 
@@ -612,7 +598,7 @@ footer p {
 }
 
 .footer-data {
-    color: var(--text-secondary, rgba(255,255,255,0.8));
+    color: var(--text-secondary, rgba(255, 255, 255, 0.8));
 }
 
 /* Large viewports: inline with middot separators */
@@ -620,9 +606,9 @@ footer p {
     .footer-data .data-group {
         white-space: nowrap;
     }
-    
+
     .footer-data .data-sep {
-        color: var(--text-muted, rgba(255,255,255,0.5));
+        color: var(--text-muted, rgba(255, 255, 255, 0.5));
     }
 }
 
@@ -631,15 +617,15 @@ footer p {
     .footer-data {
         line-height: 1.8;
     }
-    
+
     .footer-data .data-sep {
         display: none;
     }
-    
+
     .footer-data .data-group {
         display: inline;
     }
-    
+
     /* Stack artist-data on its own line */
     .footer-data .data-group.artist-data {
         display: block;
@@ -665,38 +651,40 @@ footer p {
     font-weight: normal;
     padding: 0;
     margin: 0;
-    color: var(--text-tertiary, rgba(255,255,255,0.7));
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
 }
 
 .image-sources-config label {
     display: inline-flex;
     align-items: center;
     cursor: pointer;
-    color: var(--text-tertiary, rgba(255,255,255,0.7));
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
     padding: 6px 12px;
     border-radius: 4px;
     border: 1px solid transparent;
-    transition: color 0.2s ease-out, background-color 0.2s ease-out, border-color 0.2s ease-out;
+    transition:
+        color 0.2s ease-out,
+        background-color 0.2s ease-out,
+        border-color 0.2s ease-out;
 }
 
 .image-sources-config label:hover {
-    color: var(--text-secondary, rgba(255,255,255,0.85));
-    background-color: var(--bg-subtle, rgba(255,255,255,0.08));
+    color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+    background-color: var(--bg-subtle, rgba(255, 255, 255, 0.08));
 }
 
 .image-sources-config label:has(input:checked) {
-    color: #FFF;
-    background-color: var(--bg-medium, rgba(255,255,255,0.12));
-    border-color: var(--border-subtle, rgba(255,255,255,0.25));
+    color: #fff;
+    background-color: var(--bg-medium, rgba(255, 255, 255, 0.12));
+    border-color: var(--border-subtle, rgba(255, 255, 255, 0.25));
 }
 
 /* Show focus outline on label when radio is keyboard-focused */
 .image-sources-config label:has(input:focus-visible) {
-    outline: 2px solid var(--text-tertiary, rgba(255,255,255,0.7));
+    outline: 2px solid var(--text-tertiary, rgba(255, 255, 255, 0.7));
     outline-offset: 2px;
     border-radius: 2px;
 }
-
 
 /* Visually hide radio buttons but keep them accessible */
 .image-sources-config input[type="radio"] {
@@ -717,17 +705,15 @@ footer p {
         gap: 8px;
         padding: 8px 0;
     }
-    
+
     .image-sources-config .config-label {
         width: 100%;
         text-align: center;
         margin-bottom: 4px;
     }
-    
+
     .image-sources-config label {
         padding: 6px 10px;
         font-size: 13px;
     }
 }
-
-
