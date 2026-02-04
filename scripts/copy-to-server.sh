@@ -68,12 +68,27 @@ echo "  scripts/app.js"
 echo "  scripts/personality-headlines.js"
 echo ""
 
+# Ask about cleaning destination
+echo -e "${YELLOW}Clean destination first?${NC}"
+echo "  y = Delete ALL existing files, then copy fresh (recommended)"
+echo "  n = Just overwrite/add files (keeps any extra files)"
+read -p "Clean first? (y/N) " -n 1 -r CLEAN_FIRST
+echo ""
+
 # Confirm
-read -p "Continue? (y/N) " -n 1 -r
+echo ""
+read -p "Continue with deployment? (y/N) " -n 1 -r
 echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Cancelled."
     exit 0
+fi
+
+# Clean destination if requested
+if [[ $CLEAN_FIRST =~ ^[Yy]$ ]]; then
+    echo ""
+    echo -e "${BLUE}Cleaning destination...${NC}"
+    rm -rf "${DEST_DIR:?}"/*
 fi
 
 # Copy files
