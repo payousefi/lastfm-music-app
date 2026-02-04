@@ -115,6 +115,7 @@
   let autoRotationStartTimeout = null; // Pending timeout before rotation starts
   let autoRotationSourceIndex = 0;
   let autoRotationDirection = 1; // 1 = forward, -1 = backward
+  let autoRotationDisabled = false; // Set to true when user manually selects a source
   let availableSources = []; // Sources that have been fully loaded
 
   // Current personality seed (for deterministic color/headline generation)
@@ -1469,6 +1470,7 @@
     availableSources = [];
     autoRotationSourceIndex = 0;
     autoRotationDirection = 1;
+    autoRotationDisabled = false; // Re-enable auto-rotation for new user
 
     updateHeaderSubtitle(username);
     // Wait 1s incase we  error out fast and shouldn't show loading state
@@ -1703,8 +1705,13 @@
         }
       }
 
-      // Start rotation once we have 2+ sources
-      if (availableSources.length >= 2 && !autoRotationInterval && !autoRotationStartTimeout) {
+      // Start rotation once we have 2+ sources (unless user manually disabled it)
+      if (
+        availableSources.length >= 2 &&
+        !autoRotationInterval &&
+        !autoRotationStartTimeout &&
+        !autoRotationDisabled
+      ) {
         // Small delay before starting rotation
         autoRotationStartTimeout = setTimeout(() => {
           autoRotationStartTimeout = null;
@@ -1721,8 +1728,9 @@
    * Stops auto-rotation when user manually selects a source
    */
   async function handleImageSourceChange() {
-    // Stop auto-rotation when user manually changes source
+    // Stop auto-rotation and prevent it from restarting
     stopAutoRotation();
+    autoRotationDisabled = true;
 
     const selectedRadio = document.querySelector(
       '.image-sources-config input[type="radio"]:checked'
