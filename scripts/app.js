@@ -108,6 +108,7 @@
   // Personality loading animation timeout
   let showPersonalityLoadingTimeout = null;
   let personalityAnimationTimeout = null;
+  let personalityDisplayTimeout = null; // Timeout for delayed personality reveal
 
   // Auto-rotation state
   let autoRotationInterval = null;
@@ -115,11 +116,65 @@
   let autoRotationDirection = 1; // 1 = forward, -1 = backward
   let availableSources = []; // Sources that have been fully loaded
 
+  // Current personality seed (for deterministic color/headline generation)
+  let currentPersonalitySeed = null;
+
+  /**
+   * Simple hash function (djb2) for creating deterministic seeds
+   * @param {string} str - String to hash
+   * @returns {number} - 32-bit hash value
+   */
+  function hashString(str) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+    }
+    return hash >>> 0; // Convert to unsigned 32-bit
+  }
+
+  /**
+   * Seeded pseudo-random number generator (mulberry32)
+   * Returns a function that generates deterministic random numbers 0-1
+   * @param {number} seed - Seed value
+   * @returns {function} - Function that returns next random number
+   */
+  function createSeededRandom(seed) {
+    return function () {
+      seed |= 0;
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /**
+   * Generate a personality seed from username and artist data
+   * The seed changes when the user's listening data changes
+   * @param {string} username - Last.fm username
+   * @param {Array} artists - Array of artist objects with name and playcount
+   * @returns {number} - Deterministic seed value
+   */
+  function generatePersonalitySeed(username, artists) {
+    // Create a string that captures the essence of the user's current listening
+    // Include artist names and playcounts so seed changes when listening changes
+    const dataString =
+      username.toLowerCase() +
+      '|' +
+      artists
+        .map((a) => `${a.name.toLowerCase()}:${a.playcount}`)
+        .sort()
+        .join(',');
+    return hashString(dataString);
+  }
+
   /**
    * Analyze artist data to generate a music personality headline
    * Uses TheAudioDB genre/style/mood data with Last.fm tags as fallback
+   * @param {Array} artistsData - Array of artist data with mood/genre/style
+   * @param {function} [seededRandom] - Optional seeded random function for deterministic headlines
    */
-  function analyzePersonality(artistsData) {
+  function analyzePersonality(artistsData, seededRandom) {
     // Aggregate moods and genres with weights based on play count
     const moodCounts = {};
     const genreCounts = {};
@@ -178,10 +233,12 @@
     }
 
     // Generate headline dynamically or fall back to static arrays
+    // Use seeded random for deterministic results if provided
+    const randomFn = seededRandom || Math.random;
     let headline;
     if (typeof generateHeadline === 'function') {
-      // Use dynamic generation for infinite variety
-      headline = generateHeadline(dominantMood || 'relaxed', dominantGenre || 'eclectic');
+      // Use dynamic generation with seeded random for deterministic variety
+      headline = generateHeadline(dominantMood || 'relaxed', dominantGenre || 'eclectic', randomFn);
     } else {
       // Fallback to static arrays
       let headlines;
@@ -196,7 +253,7 @@
       } else {
         headlines = FALLBACK_HEADLINES.eclectic;
       }
-      headline = headlines[Math.floor(Math.random() * headlines.length)];
+      headline = headlines[Math.floor(randomFn() * headlines.length)];
     }
 
     return {
@@ -478,13 +535,21 @@
 
   /**
    * Generate a random HSL color for the background
-   * Uses crypto.getRandomValues for better randomness distribution
+   * If a seeded random function is provided, uses deterministic randomness
+   * Otherwise uses crypto.getRandomValues for better randomness distribution
    * Tuned for vivid colors with good white text contrast (WCAG AA)
+   * @param {function} [seededRandom] - Optional seeded random function (0-1)
    */
-  function generateRandomColor() {
-    // Use crypto API for better randomness if available
+  function generateRandomColor(seededRandom) {
     let random1, random2, random3;
-    if (window.crypto && window.crypto.getRandomValues) {
+
+    if (seededRandom) {
+      // Use deterministic seeded random
+      random1 = seededRandom();
+      random2 = seededRandom();
+      random3 = seededRandom();
+    } else if (window.crypto && window.crypto.getRandomValues) {
+      // Use crypto API for better randomness
       const arr = new Uint32Array(3);
       window.crypto.getRandomValues(arr);
       random1 = arr[0] / 0xffffffff;
@@ -1187,11 +1252,17 @@
     if (typeof PERSONALITY_HEADLINES !== 'undefined' && typeof GENRE_FAMILY_MAP !== 'undefined') {
       const validData = personalityData.filter((d) => d.genre || d.style || d.mood);
       if (validData.length > 0) {
-        const analysis = analyzePersonality(validData);
+        // Create seeded random for deterministic headline generation
+        // Use a different offset from the seed to get different values than color
+        const headlineRandom = currentPersonalitySeed
+          ? createSeededRandom(currentPersonalitySeed + 1000)
+          : null;
+        const analysis = analyzePersonality(validData, headlineRandom);
         // Add a variable delay (2.5-4s) so the rolling text animation plays
         // Variable timing feels more organic, like the app is actually "thinking"
         const thinkingDelay = 2500 + Math.random() * 1500;
-        setTimeout(() => {
+        // Store timeout ID so it can be cancelled if user switches before reveal
+        personalityDisplayTimeout = setTimeout(() => {
           displayPersonality(analysis.headline);
         }, thinkingDelay);
       }
@@ -1258,6 +1329,11 @@
     // Store artists for potential reload when sources change
     currentArtists = artists;
 
+    // Generate deterministic seed from username + artist data
+    // This ensures same user with same listening = same color/personality
+    currentPersonalitySeed = generatePersonalitySeed(username, artists);
+    const seededRandom = createSeededRandom(currentPersonalitySeed);
+
     // Get primary source for initial visibility
     const primarySource = CONFIG.imageSources[0];
 
@@ -1295,7 +1371,9 @@
       // Prefetch images from other sources in background for instant switching
       prefetchOtherSources(artists);
     });
-    animateBackgroundColor(generateRandomColor());
+
+    // Use seeded random for deterministic color (same user data = same color)
+    animateBackgroundColor(generateRandomColor(seededRandom));
   }
 
   /**
@@ -1350,6 +1428,12 @@
    */
   async function loadUser(username) {
     const sanitizedUsername = sanitize(username);
+
+    // Cancel any pending personality display from previous user
+    if (personalityDisplayTimeout) {
+      clearTimeout(personalityDisplayTimeout);
+      personalityDisplayTimeout = null;
+    }
 
     // Stop any existing auto-rotation and reset available sources
     stopAutoRotation();
