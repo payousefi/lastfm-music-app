@@ -19,7 +19,12 @@
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
   <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? Over the past month...">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta property="og:image" content="img/og-image.png" />
+  <!-- Open Graph meta tags for social sharing -->
+  <meta property="og:title" content="Music — <?php echo $title; ?>" />
+  <meta property="og:description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? Over the past month..." />
+  <meta property="og:url" content="https://music.payamyousefi.com/<?php echo $username; ?>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://music.payamyousefi.com/img/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:type" content="image/png" />
