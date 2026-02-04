@@ -362,15 +362,31 @@
     const starSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='${encodedColor}' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E")`;
     document.documentElement.style.setProperty('--star-bg', starSvg);
     
-    // Set personality glow color - brighter version of background color
-    // Parse HSL and increase lightness for glow effect
+    // Parse HSL values for derived colors
     const hslMatch = targetColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
     if (hslMatch) {
-      const h = hslMatch[1];
-      const s = hslMatch[2];
-      const l = Math.min(parseInt(hslMatch[3], 10) + 45, 60); // Brighten by 25%, cap at 60%
-      const glowColor = `hsla(${h}, ${s}%, ${l}%, 0.6)`;
+      const h = parseInt(hslMatch[1], 10);
+      const s = parseInt(hslMatch[2], 10);
+      const l = parseInt(hslMatch[3], 10);
+      
+      // Personality glow - brighter version of background color
+      const glowL = Math.min(l + 45, 60);
+      const glowColor = `hsla(${h}, ${s}%, ${glowL}%, 0.6)`;
       document.documentElement.style.setProperty('--personality-glow', glowColor);
+      
+      // Generate tinted text colors based on background hue
+      // Low saturation (8-20%) keeps it readable while adding warmth
+      const textS = Math.min(Math.max(s * 0.25, 8), 20);
+      
+      // Text color tiers (replacing opacity-based approach):
+      // --text-primary: 95% lightness (replaces opacity 0.9)
+      // --text-secondary: 88% lightness (replaces opacity 0.8)
+      // --text-tertiary: 78% lightness (replaces opacity 0.7)
+      // --text-muted: 68% lightness (replaces opacity 0.5-0.6)
+      document.documentElement.style.setProperty('--text-primary', `hsl(${h}, ${textS}%, 95%)`);
+      document.documentElement.style.setProperty('--text-secondary', `hsl(${h}, ${textS}%, 88%)`);
+      document.documentElement.style.setProperty('--text-tertiary', `hsl(${h}, ${textS}%, 78%)`);
+      document.documentElement.style.setProperty('--text-muted', `hsl(${h}, ${textS}%, 68%)`);
     }
   }
 
