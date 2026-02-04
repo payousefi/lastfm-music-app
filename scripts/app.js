@@ -847,6 +847,7 @@
   /**
    * Fetch artist image from iTunes/Apple Music Search API
    * Two-step process: search for artist, then lookup their albums for artwork
+   * Uses local PHP proxy to avoid CORS issues with Apple's inconsistent CDN headers
    */
   async function fetchiTunesImage(artistName) {
     if (!artistName) {
@@ -854,8 +855,8 @@
     }
 
     try {
-      // Step 1: Search for the artist to get their ID
-      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=1`;
+      // Step 1: Search for the artist to get their ID (via proxy)
+      const searchUrl = `/api/itunes-proxy.php?endpoint=search&term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=1`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
@@ -876,8 +877,8 @@
 
       const artistId = artist.artistId;
 
-      // Step 2: Lookup artist's albums to get artwork
-      const lookupUrl = `https://itunes.apple.com/lookup?id=${artistId}&entity=album&limit=1`;
+      // Step 2: Lookup artist's albums to get artwork (via proxy)
+      const lookupUrl = `/api/itunes-proxy.php?endpoint=lookup&id=${artistId}&entity=album&limit=1`;
       const lookupResponse = await fetch(lookupUrl);
 
       if (!lookupResponse.ok) {
