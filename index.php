@@ -19,7 +19,10 @@
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
   <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? Over the past month...">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta property="og:image" content="img/screenshot.jpg" />
+  <meta property="og:image" content="img/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
   <link href="favicon.ico" rel="icon">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;700&family=Lobster&display=swap">
   <link rel="stylesheet" href="stylesheets/reset.css">
@@ -45,9 +48,9 @@
     <div class="username-section">
       <p>
         Have your own <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">last.fm</a> account?
-        <label for="username" class="visually-hidden">Enter your Last.fm username</label>
+        <label for="lastfm-username" class="visually-hidden">Enter your Last.fm username</label>
         <span aria-hidden="true">Type in your</span>
-        <input type="text" id="username" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other" aria-label="Last.fm username" placeholder="username"/>
+        <input type="text" id="lastfm-username" name="lastfm-username" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Last.fm username" placeholder="username"/>
         <span aria-hidden="true">and press <b>enter</b>.</span>
       </p>
     </div>
