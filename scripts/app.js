@@ -1625,7 +1625,7 @@
   function init() {
     wrapperEl = document.getElementById('wrap');
     contentEl = document.querySelector('.content');
-    usernameInput = document.getElementById('username');
+    usernameInput = document.getElementById('lastfm-username');
     headerSubtitle = document.querySelector('header h2');
     personalityEl = document.querySelector('.music-personality');
 
