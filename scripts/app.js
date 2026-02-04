@@ -31,6 +31,9 @@
     imageSources:  ['ITUNES', 'DISCOGS', 'THE_AUDIO_DB'],
   };
 
+  // Original source order for consistent fallback behavior
+  const ORIGINAL_SOURCE_ORDER = ['ITUNES', 'DISCOGS', 'THE_AUDIO_DB'];
+
   // Discogs rate limiter - adaptive delay based on remaining requests from headers
   // Discogs allows 60 requests/minute. We adjust speed based on how many are left.
   const discogsRateLimiter = {
@@ -320,11 +323,27 @@
 
   /**
    * Generate a random HSL color for the background
+   * Uses crypto.getRandomValues for better randomness distribution
+   * Tuned for vivid colors with good white text contrast (WCAG AA)
    */
   function generateRandomColor() {
-    const hue = Math.round(Math.random() * 359);
-    const saturation = Math.round((Math.random() * 30) + 30);
-    const lightness = Math.round((Math.random() * 30) + 10);
+    // Use crypto API for better randomness if available
+    let random1, random2, random3;
+    if (window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(3);
+      window.crypto.getRandomValues(arr);
+      random1 = arr[0] / 0xFFFFFFFF;
+      random2 = arr[1] / 0xFFFFFFFF;
+      random3 = arr[2] / 0xFFFFFFFF;
+    } else {
+      random1 = Math.random();
+      random2 = Math.random();
+      random3 = Math.random();
+    }
+    
+    const hue = Math.round(random1 * 359);
+    const saturation = Math.round((random2 * 35) + 55); // 55-90% (more vivid)
+    const lightness = Math.round((random3 * 12) + 20);  // 20-32% (dark enough for contrast)
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   }
 
@@ -342,6 +361,17 @@
     const encodedColor = encodeURIComponent(targetColor);
     const starSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='${encodedColor}' points='50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40'/%3E%3C/svg%3E")`;
     document.documentElement.style.setProperty('--star-bg', starSvg);
+    
+    // Set personality glow color - brighter version of background color
+    // Parse HSL and increase lightness for glow effect
+    const hslMatch = targetColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (hslMatch) {
+      const h = hslMatch[1];
+      const s = hslMatch[2];
+      const l = Math.min(parseInt(hslMatch[3], 10) + 45, 60); // Brighten by 25%, cap at 60%
+      const glowColor = `hsla(${h}, ${s}%, ${l}%, 0.6)`;
+      document.documentElement.style.setProperty('--personality-glow', glowColor);
+    }
   }
 
   /**
@@ -690,60 +720,60 @@
   }
 
   /**
+   * Fetch image for a specific source
+   * Returns { source, imageUrl } or { source, imageUrl: null }
+   */
+  async function fetchImageForSource(artistName, source, mbData) {
+    const { mbid, discogsId } = mbData || {};
+    const cacheKey = `${artistName}:${source}`;
+    
+    // Check cache first
+    if (imageCache[cacheKey] !== undefined) {
+      return { source, imageUrl: imageCache[cacheKey] };
+    }
+    
+    // Not in cache, fetch from source
+    let fetchedUrl = null;
+    
+    switch (source) {
+      case 'DISCOGS':
+        if (discogsId) {
+          fetchedUrl = await fetchDiscogsImageById(discogsId);
+        }
+        break;
+        
+      case 'THE_AUDIO_DB':
+        if (mbid) {
+          fetchedUrl = await fetchAudioDBImage(mbid);
+        }
+        break;
+        
+      case 'ITUNES':
+        fetchedUrl = await fetchiTunesImage(artistName);
+        break;
+    }
+    
+    // Cache the result (even if null, to avoid re-fetching)
+    imageCache[cacheKey] = fetchedUrl;
+    
+    return { source, imageUrl: fetchedUrl };
+  }
+
+  /**
    * Fetch artist image using configurable source pipeline
    * Sources are tried in order defined by CONFIG.imageSources
    * Images are cached per-source so switching sources uses cached data when available
    */
   async function fetchArtistImageWithData(artistName, mbData) {
-    const { mbid, discogsId } = mbData || {};
-    let imageUrl = null;
-    
-    // Try each source in configured order, checking cache first
+    // Try each source in configured order
     for (const source of CONFIG.imageSources) {
-      if (imageUrl) break;
-      
-      const cacheKey = `${artistName}:${source}`;
-      
-      // Check cache first
-      if (imageCache[cacheKey] !== undefined) {
-        if (imageCache[cacheKey]) {
-          imageUrl = imageCache[cacheKey];
-          break;
-        }
-        // Cached as null/empty means this source has no image, try next
-        continue;
-      }
-      
-      // Not in cache, fetch from source
-      let fetchedUrl = null;
-      
-      switch (source) {
-        case 'DISCOGS':
-          if (discogsId) {
-            fetchedUrl = await fetchDiscogsImageById(discogsId);
-          }
-          break;
-          
-        case 'THE_AUDIO_DB':
-          if (mbid) {
-            fetchedUrl = await fetchAudioDBImage(mbid);
-          }
-          break;
-          
-        case 'ITUNES':
-          fetchedUrl = await fetchiTunesImage(artistName);
-          break;
-      }
-      
-      // Cache the result (even if null, to avoid re-fetching)
-      imageCache[cacheKey] = fetchedUrl;
-      
-      if (fetchedUrl) {
-        imageUrl = fetchedUrl;
+      const result = await fetchImageForSource(artistName, source, mbData);
+      if (result.imageUrl) {
+        return result; // Return { source, imageUrl }
       }
     }
     
-    return imageUrl;
+    return { source: CONFIG.imageSources[0], imageUrl: null };
   }
 
   /**
@@ -759,42 +789,94 @@
   }
 
   /**
-   * Prepare a tile with its image (preload but don't show yet)
+   * Set image on a specific source layer within a tile
    */
-  async function prepareTileImage(artistName, imageUrl) {
+  function setSourceLayerImage(tile, source, imageUrl) {
+    const layer = tile.querySelector(`.source-layer[data-source="${source}"]`);
+    if (layer && imageUrl) {
+      layer.style.backgroundImage = `url(${imageUrl})`;
+      layer.dataset.hasImage = 'true';
+    }
+  }
+
+  /**
+   * Get the best image source for a tile based on fallback order
+   * Returns the source that has an image, following the fallback order
+   */
+  function getBestSourceForTile(tile, primarySource) {
+    const fallbackOrder = [primarySource, ...ORIGINAL_SOURCE_ORDER.filter(s => s !== primarySource)];
+    
+    for (const source of fallbackOrder) {
+      const layer = tile.querySelector(`.source-layer[data-source="${source}"]`);
+      if (layer && layer.dataset.hasImage === 'true') {
+        return source;
+      }
+    }
+    return null; // No source has an image
+  }
+
+  /**
+   * Show a specific source layer on a tile (with crossfade)
+   */
+  function showSourceLayer(tile, sourceToShow) {
+    const layers = tile.querySelectorAll('.source-layer');
+    layers.forEach(layer => {
+      if (layer.dataset.source === sourceToShow) {
+        layer.classList.add('active');
+      } else {
+        layer.classList.remove('active');
+      }
+    });
+  }
+
+  /**
+   * Prepare a tile with its image for a specific source
+   */
+  async function prepareTileImage(artistName, imageUrl, source) {
     const tiles = contentEl.querySelectorAll('.artist');
     for (const tile of tiles) {
       if (tile.dataset.artist === artistName) {
         if (imageUrl) {
           try {
             await preloadImage(imageUrl);
-            // Store image URL but don't show yet
-            tile.dataset.imageUrl = imageUrl;
-            return { tile, success: true };
+            // Set image on the source layer
+            setSourceLayerImage(tile, source, imageUrl);
+            return { tile, success: true, source };
           } catch (e) {
-            return { tile, success: false };
+            return { tile, success: false, source };
           }
         }
-        return { tile, success: false };
+        return { tile, success: false, source };
       }
     }
     return null;
   }
 
   /**
+   * Reveal a tile after its primary source image loads
+   */
+  function revealTile(tile, primarySource) {
+    // Remove loading states
+    tile.classList.remove('loading-image', 'loading-active');
+    
+    // Find the best source to show (primary or fallback)
+    const bestSource = getBestSourceForTile(tile, primarySource);
+    
+    if (bestSource) {
+      showSourceLayer(tile, bestSource);
+      tile.classList.add('image-loaded');
+    } else {
+      tile.classList.add('no-image');
+    }
+  }
+
+  /**
    * Reveal a row of tiles with fade-in effect
    */
   function revealRow(tiles) {
-    tiles.forEach(({ tile, success }) => {
-      // Remove loading states
-      tile.classList.remove('loading-image', 'loading-active');
-      
-      if (success && tile.dataset.imageUrl) {
-        tile.style.backgroundImage = `url(${tile.dataset.imageUrl})`;
-        tile.classList.add('image-loaded');
-      } else {
-        tile.classList.add('no-image');
-      }
+    const primarySource = CONFIG.imageSources[0];
+    tiles.forEach(({ tile, success, source }) => {
+      revealTile(tile, primarySource);
     });
   }
 
@@ -908,8 +990,9 @@
       setTileLoadingActive(artist.name);
       
       // Rate limiting is handled inside fetchDiscogsImageById via discogsRateLimiter
-      const imageUrl = await fetchArtistImageWithData(artist.name, mbData);
-      const result = await prepareTileImage(artist.name, imageUrl);
+      // fetchArtistImageWithData now returns { source, imageUrl }
+      const { source, imageUrl } = await fetchArtistImageWithData(artist.name, mbData);
+      const result = await prepareTileImage(artist.name, imageUrl, source);
       
       // Reveal tile immediately
       if (result) {
@@ -950,6 +1033,7 @@
 
   /**
    * Render artist tiles with accessibility support
+   * Each tile has 3 source layer divs (one per image source) for smooth crossfading
    */
   function renderArtists(artists, username) {
     // Store artists for potential reload when sources change
@@ -958,14 +1042,23 @@
     // Show personality loading state with username
     showPersonalityLoading(username);
     
+    // Get primary source for initial visibility
+    const primarySource = CONFIG.imageSources[0];
+    
     const tiles = artists.map((artist, index) => {
       const safeName = sanitize(artist.name);
       const safeUrl = sanitize(artist.url);
       const playcount = parseInt(artist.playcount, 10) || 0;
       const playsText = playcount === 1 ? 'play' : 'plays';
       
+      // Create source layer divs for each image source
+      const sourceLayers = ORIGINAL_SOURCE_ORDER.map(source => {
+        const isActive = source === primarySource ? ' active' : '';
+        return `<div class="source-layer${isActive}" data-source="${source}"></div>`;
+      }).join('');
+      
       // Accessible link with descriptive aria-label
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="${safeName}, ${playcount} ${playsText} this month"><div class="artist loading-image" data-artist="${safeName}" role="img" aria-label="${safeName}"><div class="title">${safeName}<span>${playcount} ${playsText}</span></div><div class="dark" aria-hidden="true"></div></div></a>`;
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="${safeName}, ${playcount} ${playsText} this month"><div class="artist loading-image" data-artist="${safeName}" role="img" aria-label="${safeName}">${sourceLayers}<div class="dark" aria-hidden="true"></div><div class="title">${safeName}<span>${playcount} ${playsText}</span></div></div></a>`;
     });
     
     // Add heading for screen readers
@@ -991,10 +1084,11 @@
   /**
    * Prefetch images from non-primary sources in background
    * This enables instant crossfade when switching sources
+   * Also populates the source layer divs for each tile
    */
   async function prefetchOtherSources(artists) {
     const primarySource = CONFIG.imageSources[0];
-    const otherSources = CONFIG.imageSources.slice(1);
+    const otherSources = ORIGINAL_SOURCE_ORDER.filter(s => s !== primarySource);
     
     if (otherSources.length === 0) return;
     
@@ -1004,43 +1098,28 @@
       mbDataMap[artist.name] = imageCache[`${artist.name}:MB_DATA`] || {};
     }
     
+    // Get all tiles for updating source layers
+    const tiles = contentEl.querySelectorAll('.artist');
+    
     // Prefetch each source sequentially to avoid rate limit issues
     for (const source of otherSources) {
       for (const artist of artists) {
-        const cacheKey = `${artist.name}:${source}`;
-        
-        // Skip if already cached
-        if (imageCache[cacheKey] !== undefined) continue;
-        
         const mbData = mbDataMap[artist.name];
-        let imageUrl = null;
         
-        try {
-          switch (source) {
-            case 'DISCOGS':
-              if (mbData.discogsId) {
-                imageUrl = await fetchDiscogsImageById(mbData.discogsId);
-              }
-              break;
-            case 'THE_AUDIO_DB':
-              if (mbData.mbid) {
-                imageUrl = await fetchAudioDBImage(mbData.mbid);
-              }
-              break;
-            case 'ITUNES':
-              imageUrl = await fetchiTunesImage(artist.name);
-              break;
-          }
-        } catch (e) {
-          // Silently fail - this is background prefetch
-        }
+        // Use fetchImageForSource which handles caching
+        const { imageUrl } = await fetchImageForSource(artist.name, source, mbData);
         
-        // Cache result (even if null)
-        imageCache[cacheKey] = imageUrl;
-        
-        // Preload the image if we got one
+        // If we got an image, set it on the source layer
         if (imageUrl) {
-          preloadImage(imageUrl).catch(() => {});
+          const tile = Array.from(tiles).find(t => t.dataset.artist === artist.name);
+          if (tile) {
+            try {
+              await preloadImage(imageUrl);
+              setSourceLayerImage(tile, source, imageUrl);
+            } catch (e) {
+              // Silently fail - this is background prefetch
+            }
+          }
         }
       }
       
@@ -1167,36 +1246,6 @@
   }
 
   /**
-   * Crossfade a tile to a new image
-   * Uses ::before pseudo-element for smooth transition
-   */
-  function crossfadeTile(tile, newImageUrl) {
-    return new Promise(resolve => {
-      if (!newImageUrl) {
-        // No image - just show no-image state
-        tile.classList.remove('image-loaded', 'crossfading');
-        tile.classList.add('no-image');
-        tile.style.backgroundImage = '';
-        resolve();
-        return;
-      }
-      
-      // Set the new image on ::before via CSS custom property
-      tile.style.setProperty('--crossfade-image', `url(${newImageUrl})`);
-      tile.classList.add('crossfading');
-      
-      // After transition completes, swap images
-      setTimeout(() => {
-        tile.style.backgroundImage = `url(${newImageUrl})`;
-        tile.classList.remove('crossfading', 'no-image');
-        tile.classList.add('image-loaded');
-        tile.style.removeProperty('--crossfade-image');
-        resolve();
-      }, 1000); // Match CSS transition duration (1s)
-    });
-  }
-
-  /**
    * Stop auto-rotation of images
    */
   function stopAutoRotation() {
@@ -1237,33 +1286,32 @@
 
   /**
    * Rotate all tiles to show images from a specific source
+   * Uses source layers for smooth crossfade transitions
    */
-  async function rotateToSource(source) {
+  function rotateToSource(source) {
     // Update radio button to reflect current source (visual feedback)
     const radio = document.querySelector(`.image-sources-config input[value="${source}"]`);
     if (radio && !radio.checked) {
       radio.checked = true;
     }
 
-    if (currentArtists.length === 0) return;    
+    if (currentArtists.length === 0) return;
     
     const tiles = document.querySelectorAll('.artist');
-    const crossfadePromises = [];
     
     for (const artist of currentArtists) {
       const tile = Array.from(tiles).find(t => t.dataset.artist === artist.name);
       if (!tile) continue;
       
-      const cacheKey = `${artist.name}:${source}`;
-      const imageUrl = imageCache[cacheKey];
+      // Find the best source to show (requested source or fallback)
+      const bestSource = getBestSourceForTile(tile, source);
       
-      // Only crossfade if we have a different image
-      if (imageUrl && tile.style.backgroundImage !== `url(${imageUrl})` && tile.style.backgroundImage !== `url("${imageUrl}")`) {
-        crossfadePromises.push(crossfadeTile(tile, imageUrl));
+      if (bestSource) {
+        showSourceLayer(tile, bestSource);
+        tile.classList.remove('no-image');
+        tile.classList.add('image-loaded');
       }
     }
-    
-    await Promise.all(crossfadePromises);
   }
 
   /**
@@ -1297,8 +1345,8 @@
 
   /**
    * Handle image source radio button changes
-   * Selected source becomes primary, others become fallbacks
-   * Prioritizes showing PRIMARY source image, fetches if not cached
+   * Switches visible source layer on each tile using crossfade
+   * Uses fallback order if primary source has no image
    * Stops auto-rotation when user manually selects a source
    */
   async function handleImageSourceChange() {
@@ -1310,8 +1358,9 @@
     
     const primarySource = selectedRadio.value;
     
-    // Build new sources array: primary first, then others in their current order
-    const newSources = [primarySource, ...CONFIG.imageSources.filter(s => s !== primarySource)];
+    // Build new sources array: primary first, then others in original order
+    // This ensures consistent fallback behavior regardless of previous selections
+    const newSources = [primarySource, ...ORIGINAL_SOURCE_ORDER.filter(s => s !== primarySource)];
     
     // Update config
     CONFIG.imageSources = newSources;
@@ -1319,49 +1368,26 @@
     // Update images if we have artists loaded
     if (currentArtists.length > 0) {
       const tiles = document.querySelectorAll('.artist');
-      const crossfadePromises = [];
-      const artistsToFetch = [];
       
-      // For each artist, check if PRIMARY source is cached
+      // For each tile, show the best available source layer
       for (const artist of currentArtists) {
         const tile = Array.from(tiles).find(t => t.dataset.artist === artist.name);
         if (!tile) continue;
         
-        // Check if PRIMARY source has cached image
-        const primaryCacheKey = `${artist.name}:${primarySource}`;
-        const primaryImage = imageCache[primaryCacheKey];
+        // Find the best source to show (primary or fallback)
+        const bestSource = getBestSourceForTile(tile, primarySource);
         
-        if (primaryImage) {
-          // Primary source cached - crossfade to it
-          crossfadePromises.push(crossfadeTile(tile, primaryImage));
-        } else if (imageCache[primaryCacheKey] === null) {
-          // Primary source was tried but has no image - use fallback
-          let fallbackImage = null;
-          for (const source of newSources.slice(1)) {
-            const cacheKey = `${artist.name}:${source}`;
-            if (imageCache[cacheKey]) {
-              fallbackImage = imageCache[cacheKey];
-              break;
-            }
-          }
-          crossfadePromises.push(crossfadeTile(tile, fallbackImage));
+        if (bestSource) {
+          // Crossfade to the best source layer
+          showSourceLayer(tile, bestSource);
+          tile.classList.remove('no-image');
+          tile.classList.add('image-loaded');
         } else {
-          // Primary source not yet tried - fetch it
-          artistsToFetch.push(artist);
-          tile.classList.remove('image-loaded', 'no-image', 'crossfading');
-          tile.classList.add('loading-image');
-          tile.style.backgroundImage = '';
+          // No source has an image - show no-image state
+          showSourceLayer(tile, null);
+          tile.classList.remove('image-loaded');
+          tile.classList.add('no-image');
         }
-      }
-      
-      // Crossfade cached images immediately
-      await Promise.all(crossfadePromises);
-      
-      // Fetch uncached images if any
-      if (artistsToFetch.length > 0) {
-        showRateLimitNote(true);
-        await fetchAllArtistImages(artistsToFetch);
-        showRateLimitNote(false);
       }
     }
   }

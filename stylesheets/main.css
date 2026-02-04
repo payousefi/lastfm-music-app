@@ -90,12 +90,12 @@ h1 {
     font-family: 'Lobster', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 32px;
     line-height: 40px;
-    opacity: 0.7;
+    opacity: 0.8;
     transition: opacity 0.2s ease-out;
 }
 
 h1:hover {
-    opacity: 0.8;
+    opacity: 1;
 }
 
 h2 {
@@ -134,7 +134,7 @@ hr {
 /*  Wrapper - background color is set dynamically via JS
 ----------------------------------------------------- */
 #wrap {
-    padding: 25px 20px;
+    padding: 0 30px;
     text-align: center;
     background: #000;
     min-height: 100vh;
@@ -143,16 +143,17 @@ hr {
     flex-direction: column;
 }
 
-/*  Header - gradient from top (flipped from footer)
+/*  Header
 ----------------------------------------------------- */
 header {
-    padding: 10px 20px 20px;
+    margin: 30px 0 20px;
 }
 
 /*  Music data content
 ----------------------------------------------------- */
 .content {
     text-align: center;
+    margin-top: 0px;
     margin-bottom: 50px;
     /* Limit to 4 tiles per row: 4 × (250px tile + 30px margin) = 1120px */
     max-width: 1120px;
@@ -164,10 +165,10 @@ header {
 ----------------------------------------------------- */
 .music-personality {
     font-family: 'Lobster', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 46px;
-    line-height: 46px;
+    font-size: 50px;
+    line-height: 50px;
     text-align: center;
-    margin: 30px auto 15px;
+    margin: 45px auto 15px;
     padding: 0 15px;
     visibility: hidden;
     opacity: 0;
@@ -200,8 +201,9 @@ header {
 /* Rolling text loading animation */
 .music-personality .personality-rolling {
     display: inline-block;
-    opacity: 0.5;
+    opacity: 0.6;
     font-style: italic;
+    font-size: 40px;
     transition: opacity 0.3s ease-out;
 }
 
@@ -215,7 +217,7 @@ header {
     opacity: 0;
 }
 
-/* When visible, hide rolling and show text with fade-in */
+/* When visible, hide rolling and show text with fade-in + glow */
 .music-personality.visible .personality-rolling {
     display: none;
 }
@@ -223,6 +225,9 @@ header {
 .music-personality.visible .personality-text {
     display: inline;
     animation: personalityReveal 2s ease-out forwards;
+    /* Glow uses CSS variable set by JS, falls back to white */
+    text-shadow: 0 0 10px var(--personality-glow, rgba(255, 255, 255, 0.4)),
+                 0 0 30px var(--personality-glow, rgba(255, 255, 255, 0.4));
 }
 
 @keyframes personalityReveal {
@@ -298,7 +303,7 @@ header {
                 inset 0 0 0 1px rgba(255,255,255,0.1);
     /* Prevent any layout shift during crossfade */
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: 8px;
     transition: box-shadow 0.2s ease-out;
 }
 
@@ -309,24 +314,23 @@ header {
                 
 }
 
-/* Crossfade overlay for smooth image transitions */
-.artist::before {
-    content: '';
+/* Source layer divs for smooth crossfade transitions between image sources */
+.source-layer {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: var(--crossfade-image);
     background-position: center center;
     background-size: cover;
     opacity: 0;
-    transition: opacity 1s ease-in-out;
+    transition: opacity 0.8s ease-in-out;
     z-index: 0;
     pointer-events: none;
 }
 
-.artist.crossfading::before {
+/* Active source layer is visible */
+.source-layer.active {
     opacity: 1;
 }
 
@@ -462,6 +466,30 @@ header {
     }
 }
 
+/*  Username Section (sticky on desktop only)
+----------------------------------------------------- */
+.username-section {
+    padding: 15px 0 20px;
+    margin: -15px 0 0;
+    border-bottom: 1px solid rgba(255,255,255,0.25);
+}
+
+.username-section p {
+    margin: 0;
+}
+
+/* Sticky only on larger viewports */
+@media screen and (min-width: 481px) {
+    .username-section {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: inherit;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+}
+
 /*  Form fields
 ----------------------------------------------------- */
 input[type="text"] {
@@ -519,15 +547,16 @@ a, .title, .dark, input {
 ----------------------------------------------------- */
 .error-state {
     text-align: center;
-    padding: 50px 20px;
+    padding: 150px 30px;
     max-width: 700px;
     margin: 0 auto;
 }
 
 .error-state p {
     margin-bottom: 10px;
-    font-size: 20px;
+    font-size: 18px;
     line-height: 30px;
+    opacity: 0.7;
 }
 
 /*  Loading State for Artist Images - plain background only
@@ -578,11 +607,10 @@ a, .title, .dark, input {
 /*  Footer
 ----------------------------------------------------- */
 footer {
-    padding: 30px 20px;
-    margin: 25px -20px -25px;
-    background: linear-gradient(to top, transparent 0%, rgba(0,0,0,.35) 30%, rgba(0,0,0,.5) 100%);
+    padding: 20px 30px;
+    margin: 0 -30px;
+    background: linear-gradient(to top, transparent 0%, rgba(0,0,0,.35) 60%, rgba(0,0,0,.5) 100%);
     text-align: center;
-    margin-top: auto;
 }
 
 footer hr { 
@@ -607,27 +635,35 @@ footer p {
     opacity: 0.8;
 }
 
-.footer-data .data-group {
-    white-space: nowrap;
+/* Large viewports: inline with middot separators */
+@media screen and (min-width: 769px) {
+    .footer-data .data-group {
+        white-space: nowrap;
+    }
+    
+    .footer-data .data-sep {
+        opacity: 0.5;
+    }
 }
 
-/* Small/Medium viewports: stack data sources only (copyright stays inline) */
+/* Small/Medium viewports: wrap naturally, hide main separator */
 @media screen and (max-width: 768px) {
     .footer-data {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
+        line-height: 1.8;
     }
     
     .footer-data .data-sep {
         display: none;
     }
-}
-
-/* Large viewports: copyright on line 1, data sources on line 2 */
-@media screen and (min-width: 769px) {
-    .footer-data .data-sep {
-        opacity: 0.5;
+    
+    .footer-data .data-group {
+        display: inline;
+    }
+    
+    /* Stack artist-data on its own line */
+    .footer-data .data-group.artist-data {
+        display: block;
+        margin-top: 3px;
     }
 }
 
@@ -636,14 +672,13 @@ footer p {
 .image-sources-config {
     border: none;
     margin: 0;
-    padding: 0;
-    font-size: 13px;
+    padding: 10px 0;
+    font-size: 14px;
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 10px;
-    margin-bottom: -5px;
+    gap: 15px;
 }
 
 .image-sources-config .config-label {
@@ -656,32 +691,49 @@ footer p {
 .image-sources-config label {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     cursor: pointer;
     opacity: 0.7;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: opacity 0.2s ease-out, background-color 0.2s ease-out;
+}
+
+.image-sources-config label:hover {
+    opacity: 0.9;
+    background-color: rgba(255,255,255,0.1);
 }
 
 .image-sources-config label:has(input:checked) {
     opacity: 1;
+    background-color: rgba(255,255,255,0.15);
 }
 
 .image-sources-config input[type="radio"] {
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     cursor: pointer;
     margin: 0;
+    accent-color: #fff;
 }
 
-/* Mobile: stack the image source controls */
+/* Mobile: horizontal row with tighter spacing */
 @media screen and (max-width: 480px) {
     .image-sources-config {
-        flex-direction: column;
-        gap: 0;
-        margin-bottom: 20px;
+        gap: 8px;
+        padding: 8px 0;
     }
     
     .image-sources-config .config-label {
-        margin-bottom: 5px;
+        width: 100%;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+    
+    .image-sources-config label {
+        padding: 6px 10px;
+        font-size: 13px;
     }
 }
+
 
