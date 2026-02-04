@@ -566,6 +566,10 @@
       // Use same hue but high lightness with varying alpha for subtle tinting
       const uiL = 95; // Very light for borders/backgrounds
       document.documentElement.style.setProperty(
+        '--border-specular',
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.1)`
+      );
+      document.documentElement.style.setProperty(
         '--border-subtle',
         `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`
       );
