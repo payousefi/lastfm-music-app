@@ -249,50 +249,60 @@ const CHARACTERS = [
 // ═══════════════════════════════════════════════════════════════════════════
 // HEADLINE TEMPLATES - Patterns for generating varied lengths
 // Third person focus (describing them, not addressing them)
+//
+// genreAsAdjective: true = genre is used before a noun (e.g., "{genre} Heart")
+//   - Only works with simple single-word genres like "Rock", "Jazz"
+//   - Awkward with multi-word genres: "Avant-Garde Heart", "Drum & Bass Soul"
+// genreAsAdjective: false = genre is used as a noun (at end or after preposition)
+//   - Works with any genre: "Lost in Avant-Garde", "Shaped by Drum & Bass"
 // ═══════════════════════════════════════════════════════════════════════════
 const TEMPLATES = {
   // Short templates (2-4 words)
   short: [
-    '{mood} {genre} {character}', // "Melancholic Jazz Poet"
-    '{mood} {genre} Soul', // "Joyful Rock Soul"
-    '{genre} {character}', // "Synth Dreamer"
-    'The {mood} {character}', // "The Brooding Wanderer"
-    '{mood} {character}', // "Wistful Dreamer"
-    '{genre} Heart', // "Folk Heart"
-    'Born {genre} {character}', // "Born Rock Spirit"
-    'True {genre} {character}', // "True Jazz Soul"
-    'A {mood} {character}', // "A Lonely Wanderer"
-    '{mood} and {genre}', // "Restless and Electric"
-    'Forever {genre}', // "Forever Jazz"
-    'Deeply {genre}', // "Deeply Folk"
-    '{genre} at Heart', // "Rock at Heart"
-    'The {genre} {character}', // "The Jazz Philosopher"
-    'A {genre} {character}', // "A Folk Dreamer"
-    '{mood} to the Core' // "Melancholic to the Core"
+    // Genre as ADJECTIVE (before noun) - only for simple genres
+    { template: '{mood} {genre} {character}', genreAsAdjective: true }, // "Melancholic Jazz Poet"
+    { template: '{mood} {genre} Soul', genreAsAdjective: true }, // "Joyful Rock Soul"
+    { template: '{genre} {character}', genreAsAdjective: true }, // "Synth Dreamer"
+    { template: '{genre} Heart', genreAsAdjective: true }, // "Folk Heart"
+    { template: 'Born {genre} {character}', genreAsAdjective: true }, // "Born Rock Spirit"
+    { template: 'True {genre} {character}', genreAsAdjective: true }, // "True Jazz Soul"
+    { template: 'The {genre} {character}', genreAsAdjective: true }, // "The Jazz Philosopher"
+    { template: 'A {genre} {character}', genreAsAdjective: true }, // "A Folk Dreamer"
+    // Genre as NOUN (at end or standalone) - works with any genre
+    { template: 'The {mood} {character}', genreAsAdjective: false }, // "The Brooding Wanderer"
+    { template: '{mood} {character}', genreAsAdjective: false }, // "Wistful Dreamer"
+    { template: 'A {mood} {character}', genreAsAdjective: false }, // "A Lonely Wanderer"
+    { template: '{mood} to the Core', genreAsAdjective: false }, // "Melancholic to the Core"
+    { template: '{mood} and {genre}', genreAsAdjective: false }, // "Restless and Electronic"
+    { template: 'Forever {genre}', genreAsAdjective: false }, // "Forever Jazz" / "Forever Avant-Garde"
+    { template: 'Deeply {genre}', genreAsAdjective: false }, // "Deeply Folk" / "Deeply Avant-Garde"
+    { template: '{genre} at Heart', genreAsAdjective: false } // "Rock at Heart" / "Avant-Garde at Heart"
   ],
   // Medium templates (4-7 words)
   medium: [
-    'A {mood} {genre} {character} at Heart', // "A Melancholic Jazz Poet at Heart"
-    '{character} of the {mood} {genre} Sound', // "Wanderer of the Brooding Metal Sound"
-    'The {mood} {genre} {character}', // "The Restless Electronic Voyager"
-    'A {character} Drawn to {mood} {genre}', // "A Seeker Drawn to Melancholic Folk"
-    'Where {moodNoun} Meets {genre}', // "Where Sorrow Meets Jazz"
-    'The {mood} {character} of {genre}', // "The Restless Voyager of Electronic"
-    'A {mood} {character} in a {genre} World', // "A Tender Soul in a Folk World"
-    'The Enduring {genre} {character}', // "The Enduring Rock Soul"
-    'Devoted {genre} {character}', // "Devoted Jazz Soul"
-    'Living for {mood} {genre}', // "Living for Melancholic Jazz"
-    'Lost in {mood} {genre}', // "Lost in Dark Electronic"
-    'A True {genre} {character}', // "A True Folk Romantic"
-    'Born a {mood} {genre} {character}', // "Born a Restless Rock Rebel"
-    'The {character} Who Found {genre}', // "The Wanderer Who Found Jazz"
-    '{genre} Flows Through This {character}', // "Jazz Flows Through This Soul"
-    'A {character} Shaped by {genre}', // "A Soul Shaped by Folk"
-    'Defined by {mood} {genre}', // "Defined by Melancholic Jazz"
-    'The {mood} Side of {genre}', // "The Dark Side of Electronic"
-    'A {character} at Home in {genre}', // "A Dreamer at Home in Indie"
-    'Rooted in {mood} {genre}', // "Rooted in Peaceful Folk"
-    '{mood} {genre} Through and Through' // "Joyful Pop Through and Through"
+    // Genre as ADJECTIVE (before noun) - only for simple genres
+    { template: 'A {mood} {genre} {character} at Heart', genreAsAdjective: true }, // "A Melancholic Jazz Poet at Heart"
+    { template: '{character} of the {mood} {genre} Sound', genreAsAdjective: true }, // "Wanderer of the Brooding Metal Sound"
+    { template: 'The {mood} {genre} {character}', genreAsAdjective: true }, // "The Restless Electronic Voyager"
+    { template: 'The Enduring {genre} {character}', genreAsAdjective: true }, // "The Enduring Rock Soul"
+    { template: 'Devoted {genre} {character}', genreAsAdjective: true }, // "Devoted Jazz Soul"
+    { template: 'A True {genre} {character}', genreAsAdjective: true }, // "A True Folk Romantic"
+    { template: 'Born a {mood} {genre} {character}', genreAsAdjective: true }, // "Born a Restless Rock Rebel"
+    { template: '{genre} Flows Through This {character}', genreAsAdjective: true }, // "Jazz Flows Through This Soul"
+    { template: '{mood} {genre} Through and Through', genreAsAdjective: true }, // "Joyful Pop Through and Through"
+    // Genre as NOUN (at end or after preposition) - works with any genre
+    { template: 'A {character} Drawn to {mood} {genre}', genreAsAdjective: false }, // "A Seeker Drawn to Melancholic Folk"
+    { template: 'Where {moodNoun} Meets {genre}', genreAsAdjective: false }, // "Where Sorrow Meets Jazz"
+    { template: 'The {mood} {character} of {genre}', genreAsAdjective: false }, // "The Restless Voyager of Electronic"
+    { template: 'A {mood} {character} in a {genre} World', genreAsAdjective: false }, // "A Tender Soul in a Folk World"
+    { template: 'Living for {mood} {genre}', genreAsAdjective: false }, // "Living for Melancholic Jazz"
+    { template: 'Lost in {mood} {genre}', genreAsAdjective: false }, // "Lost in Dark Electronic"
+    { template: 'The {character} Who Found {genre}', genreAsAdjective: false }, // "The Wanderer Who Found Jazz"
+    { template: 'A {character} Shaped by {genre}', genreAsAdjective: false }, // "A Soul Shaped by Folk"
+    { template: 'Defined by {mood} {genre}', genreAsAdjective: false }, // "Defined by Melancholic Jazz"
+    { template: 'The {mood} Side of {genre}', genreAsAdjective: false }, // "The Dark Side of Electronic"
+    { template: 'A {character} at Home in {genre}', genreAsAdjective: false }, // "A Dreamer at Home in Indie"
+    { template: 'Rooted in {mood} {genre}', genreAsAdjective: false } // "Rooted in Peaceful Folk"
   ]
 };
 
@@ -300,6 +310,65 @@ const TEMPLATES = {
 // HELPER FUNCTIONS
 // All functions accept an optional randomFn for deterministic generation
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fix "a/an" grammar in a headline.
+ * Converts "A [vowel]..." to "An [vowel]..." and "a [vowel]..." to "an [vowel]..."
+ * Handles edge cases like "A Unique" (sounds like consonant) staying as "A"
+ */
+function fixArticleGrammar(headline) {
+  // Words that start with a vowel letter but sound like a consonant (use "a")
+  const consonantSoundingVowels = [
+    'unique',
+    'universal',
+    'university',
+    'unicorn',
+    'uniform',
+    'union',
+    'united',
+    'unity',
+    'use',
+    'used',
+    'useful',
+    'user',
+    'usual',
+    'usually',
+    'utopia',
+    'euphoric',
+    'euphoria',
+    'european',
+    'one',
+    'once'
+  ];
+
+  // Words that start with a consonant letter but sound like a vowel (use "an")
+  const vowelSoundingConsonants = ['honest', 'honor', 'honour', 'hour', 'heir'];
+
+  // Pattern to match "A " or "a " at word boundaries followed by a word
+  // This handles start of string and after spaces
+  return headline.replace(/\b(A|a)\s+(\w+)/g, (match, article, nextWord) => {
+    const nextWordLower = nextWord.toLowerCase();
+    const firstLetter = nextWordLower[0];
+    const isVowel = 'aeiou'.includes(firstLetter);
+
+    // Check for consonant-sounding vowel words (keep "a")
+    if (isVowel && consonantSoundingVowels.some((w) => nextWordLower.startsWith(w))) {
+      return match; // Keep as-is
+    }
+
+    // Check for vowel-sounding consonant words (use "an")
+    if (!isVowel && vowelSoundingConsonants.some((w) => nextWordLower.startsWith(w))) {
+      return article === 'A' ? `An ${nextWord}` : `an ${nextWord}`;
+    }
+
+    // Standard rule: vowels get "an", consonants get "a"
+    if (isVowel) {
+      return article === 'A' ? `An ${nextWord}` : `an ${nextWord}`;
+    }
+
+    return match; // Keep as-is for consonants
+  });
+}
 
 function randomFrom(array, randomFn) {
   const rand = randomFn || Math.random;
@@ -333,17 +402,40 @@ function getCharacter(randomFn) {
 // Accepts optional randomFn for deterministic generation (seeded random)
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Check if a genre term is "simple" (single word, no special characters)
+ * Simple genres work with all templates; complex ones need filtering
+ */
+function isSimpleGenre(genreWord) {
+  // Simple if it's a single word with no spaces, hyphens, or ampersands
+  return !genreWord.includes(' ') && !genreWord.includes('&') && !genreWord.includes('-');
+}
+
 function generateHeadline(mood, genre, randomFn) {
   const rand = randomFn || Math.random;
+
+  // Get genre word first so we can filter templates appropriately
+  const genreWord = getGenreTerm(genre, randomFn);
+  const genreIsSimple = isSimpleGenre(genreWord);
+
   // Randomly choose short or medium length (roughly 50/50)
   const useShort = rand() > 0.5;
-  const templates = useShort ? TEMPLATES.short : TEMPLATES.medium;
-  const template = randomFrom(templates, randomFn);
+  const allTemplates = useShort ? TEMPLATES.short : TEMPLATES.medium;
 
-  // Get components
+  // Filter templates based on genre complexity
+  // Complex genres (multi-word like "Avant-Garde", "Drum & Bass") can only use
+  // templates where genre is used as a NOUN (at end or after preposition),
+  // not as an ADJECTIVE (before another noun like "Heart" or "Soul")
+  const availableTemplates = genreIsSimple
+    ? allTemplates
+    : allTemplates.filter((t) => !t.genreAsAdjective);
+
+  const templateObj = randomFrom(availableTemplates, randomFn);
+  const template = templateObj.template;
+
+  // Get other components
   const moodWord = getMoodDescriptor(mood, randomFn);
   const moodNoun = getMoodNoun(mood, randomFn);
-  const genreWord = getGenreTerm(genre, randomFn);
   const character = getCharacter(randomFn);
 
   // Replace placeholders
@@ -352,6 +444,9 @@ function generateHeadline(mood, genre, randomFn) {
     .replace(/{moodNoun}/g, moodNoun)
     .replace(/{genre}/g, genreWord)
     .replace(/{character}/g, character);
+
+  // Fix "a/an" grammar (e.g., "A Intense Heart" -> "An Intense Heart")
+  headline = fixArticleGrammar(headline);
 
   return headline;
 }
