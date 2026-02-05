@@ -485,11 +485,11 @@ header {
     padding: 15px 0 20px;
     margin: -15px 0 0;
     border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.25));
-    line-height: 40px;
 }
 
 .username-section p {
     margin: 0;
+    line-height: 40px;
 }
 
 /* Sticky only on larger viewports */
@@ -499,8 +499,6 @@ header {
         top: 0;
         z-index: 20;
         background: inherit;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
     }
 }
 
@@ -537,8 +535,8 @@ input[type="text"]::placeholder {
 @media screen and (max-width: 480px) {
     input[type="text"] {
         display: block;
-        margin: 10px auto;
-        width: 75%;
+        margin: 0 auto;
+        width: 65%;
     }
 }
 
