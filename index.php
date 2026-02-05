@@ -17,7 +17,7 @@
   <title>Music &mdash; <?php echo $title; ?></title>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript">
-  <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? Over the past month...">
+  <meta name="description" content="Curious about <?php echo strip_tags($whos); ?> taste in music? Discover music personality and more.">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Open Graph meta tags for social sharing -->
   <meta property="og:title" content="Music — <?php echo $title; ?>" />
