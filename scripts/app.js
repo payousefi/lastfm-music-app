@@ -554,13 +554,76 @@
   }
 
   /**
-   * Generate a random HSL color for the background
+   * Mood-to-color mapping for personality-influenced backgrounds
+   * Each mood has a hue range, saturation range, and lightness range
+   * Hue ranges are designed to evoke the emotional quality of each mood
+   */
+  const MOOD_COLORS = {
+    happy: {
+      // Warm yellows, oranges, bright greens (30-120 hue range)
+      hueMin: 30,
+      hueMax: 120,
+      satMin: 60,
+      satMax: 85,
+      lightMin: 22,
+      lightMax: 32
+    },
+    sad: {
+      // Cool blues, blue-purples (200-260 hue range)
+      hueMin: 200,
+      hueMax: 260,
+      satMin: 40,
+      satMax: 70,
+      lightMin: 18,
+      lightMax: 28
+    },
+    angry: {
+      // Reds, deep oranges (0-30 or 340-360 hue range)
+      hueMin: 340,
+      hueMax: 390, // Wraps around: 390 = 30
+      satMin: 65,
+      satMax: 90,
+      lightMin: 20,
+      lightMax: 30
+    },
+    relaxed: {
+      // Soft greens, teals, gentle blues (140-200 hue range)
+      hueMin: 140,
+      hueMax: 200,
+      satMin: 35,
+      satMax: 65,
+      lightMin: 20,
+      lightMax: 30
+    },
+    energetic: {
+      // Vibrant magentas, hot pinks, electric purples (280-340 hue range)
+      hueMin: 280,
+      hueMax: 340,
+      satMin: 70,
+      satMax: 95,
+      lightMin: 22,
+      lightMax: 32
+    },
+    dark: {
+      // Deep purples, dark blues, near-blacks (240-300 hue range)
+      hueMin: 240,
+      hueMax: 300,
+      satMin: 30,
+      satMax: 60,
+      lightMin: 12,
+      lightMax: 22
+    }
+  };
+
+  /**
+   * Generate a random HSL color for the background, optionally influenced by mood
    * If a seeded random function is provided, uses deterministic randomness
    * Otherwise uses crypto.getRandomValues for better randomness distribution
    * Tuned for vivid colors with good white text contrast (WCAG AA)
    * @param {function} [seededRandom] - Optional seeded random function (0-1)
+   * @param {string} [mood] - Optional mood to influence color (happy, sad, angry, relaxed, energetic, dark)
    */
-  function generateRandomColor(seededRandom) {
+  function generateRandomColor(seededRandom, mood) {
     let random1, random2, random3;
 
     if (seededRandom) {
@@ -581,9 +644,32 @@
       random3 = Math.random();
     }
 
-    const hue = Math.round(random1 * 359);
-    const saturation = Math.round(random2 * 35 + 55); // 55-90% (more vivid)
-    const lightness = Math.round(random3 * 12 + 20); // 20-32% (dark enough for contrast)
+    // Get color ranges based on mood, or use full spectrum if no mood
+    const moodConfig = mood && MOOD_COLORS[mood] ? MOOD_COLORS[mood] : null;
+
+    let hue, saturation, lightness;
+
+    if (moodConfig) {
+      // Use mood-specific ranges
+      const hueRange = moodConfig.hueMax - moodConfig.hueMin;
+      hue = Math.round(random1 * hueRange + moodConfig.hueMin);
+      // Handle hue wrap-around (e.g., angry mood spans 340-390, which is 340-360 + 0-30)
+      if (hue >= 360) {
+        hue -= 360;
+      }
+      saturation = Math.round(
+        random2 * (moodConfig.satMax - moodConfig.satMin) + moodConfig.satMin
+      );
+      lightness = Math.round(
+        random3 * (moodConfig.lightMax - moodConfig.lightMin) + moodConfig.lightMin
+      );
+    } else {
+      // Full spectrum (original behavior)
+      hue = Math.round(random1 * 359);
+      saturation = Math.round(random2 * 35 + 55); // 55-90% (more vivid)
+      lightness = Math.round(random3 * 12 + 20); // 20-32% (dark enough for contrast)
+    }
+
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   }
 
@@ -1312,11 +1398,20 @@
         // Store timeout ID so it can be cancelled if user switches before reveal
         personalityDisplayTimeout = setTimeout(() => {
           displayPersonality(analysis.headline);
+          // Animate background to mood-influenced color when personality is revealed
+          // Use a fresh seeded random for the color (different offset than headline)
+          const colorRandom = currentPersonalitySeed
+            ? createSeededRandom(currentPersonalitySeed + 2000)
+            : null;
+          animateBackgroundColor(generateRandomColor(colorRandom, analysis.mood));
         }, thinkingDelay);
       }
     }
 
     // Phase 3: Fetch images in random order, reveal each immediately
+    // Track loaded artists for progressive background color updates
+    const loadedArtistNames = [];
+
     for (const artist of shuffledArtists) {
       const mbData = mbDataMap[artist.name] || {};
 
@@ -1331,6 +1426,27 @@
       // Reveal tile immediately
       if (result) {
         revealRow([result]);
+
+        // Track this artist as loaded
+        loadedArtistNames.push(artist.name);
+
+        // Update background color based on personality data from loaded artists so far
+        const loadedPersonalityData = personalityData.filter(
+          (d) => loadedArtistNames.includes(d.name) && (d.genre || d.style || d.mood)
+        );
+
+        if (loadedPersonalityData.length > 0) {
+          // Create a seeded random based on current loaded artists for some consistency
+          // Use a hash of loaded artist names to get deterministic but evolving colors
+          const loadedHash = hashString(loadedArtistNames.join('|'));
+          const progressiveRandom = createSeededRandom(loadedHash);
+
+          // Analyze personality from loaded artists so far
+          const progressiveAnalysis = analyzePersonality(loadedPersonalityData, progressiveRandom);
+
+          // Animate to the mood-influenced color
+          animateBackgroundColor(generateRandomColor(progressiveRandom, progressiveAnalysis.mood));
+        }
       }
     }
   }
@@ -1421,7 +1537,7 @@
     });
 
     // Use seeded random for deterministic color (same user data = same color)
-    animateBackgroundColor(generateRandomColor(seededRandom));
+    // animateBackgroundColor(generateRandomColor(seededRandom));
   }
 
   /**
