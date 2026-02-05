@@ -406,6 +406,24 @@
       // Transition from loading to visible
       personalityEl.classList.remove('loading');
       personalityEl.classList.add('visible');
+
+      // On mobile viewports, smoothly scroll to the main content area
+      // so the personality headline is visible after it fades in
+      // Only scroll if user hasn't already scrolled past the username section
+      if (window.innerWidth <= 768) {
+        const usernameSection = document.querySelector('.username-section');
+        const mainElement = document.querySelector('main');
+        if (usernameSection && mainElement) {
+          const usernameSectionBottom = usernameSection.getBoundingClientRect().bottom;
+          // Only scroll if the username section is still visible (user is near top)
+          if (usernameSectionBottom > 0) {
+            // Small delay to let the fade-in animation start
+            setTimeout(() => {
+              mainElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }
+        }
+      }
     }, 300);
   }
 
