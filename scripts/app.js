@@ -703,7 +703,7 @@
       // Generate tinted text colors based on background hue
       // Use moderate saturation (15-35%) for noticeable tint
       // The findMinLightnessForContrast function ensures WCAG compliance by adjusting lightness
-      const textS = Math.min(Math.max(s * 0.4, 15), 35);
+      const textS = Math.min(Math.max(s * 0.4, 25), 35);
 
       // Calculate minimum lightness values for WCAG AA compliance (4.5:1 contrast)
       // Each tier has a different target contrast ratio:
@@ -763,6 +763,23 @@
       document.documentElement.style.setProperty(
         '--bg-strong',
         `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`
+      );
+      // Input field specific vars (higher opacity for better affordance)
+      document.documentElement.style.setProperty(
+        '--input-bg',
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.35)`
+      );
+      document.documentElement.style.setProperty(
+        '--input-bg-focus',
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.4)`
+      );
+      document.documentElement.style.setProperty(
+        '--input-border',
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.6)`
+      );
+      document.documentElement.style.setProperty(
+        '--input-border-focus',
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.8)`
       );
     }
   }
