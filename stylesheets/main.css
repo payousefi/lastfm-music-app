@@ -555,6 +555,8 @@ input[type="text"]::placeholder {
         display: block;
         margin: 0 auto;
         width: 65%;
+        /* Prevent Safari iOS auto-zoom on focus - requires 16px minimum */
+        font-size: 16px;
     }
 }
 
