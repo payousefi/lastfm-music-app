@@ -416,7 +416,9 @@
         if (usernameSection && mainElement) {
           const usernameSectionBottom = usernameSection.getBoundingClientRect().bottom;
           // Only scroll if the username section is still visible (user is near top)
-          if (usernameSectionBottom > 0) {
+          // and the input field is not focused (user may be typing another username)
+          const inputIsFocused = document.activeElement === usernameInput;
+          if (usernameSectionBottom > 0 && !inputIsFocused) {
             // Small delay to let the fade-in animation start
             setTimeout(() => {
               mainElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -767,11 +769,11 @@
       // Input field specific vars (higher opacity for better affordance)
       document.documentElement.style.setProperty(
         '--input-bg',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.35)`
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.2)`
       );
       document.documentElement.style.setProperty(
         '--input-bg-focus',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.4)`
+        `hsla(${h}, ${textS}%, ${uiL}%, 0.3)`
       );
       document.documentElement.style.setProperty(
         '--input-border',
@@ -1687,6 +1689,7 @@
         // contentEl.style.display = 'none';
         // contentEl.innerHTML = '';
         loadUser(inputVal);
+        usernameInput.blur();
       }
     }
   }
@@ -1960,6 +1963,22 @@
     if (usernameInput) {
       usernameInput.addEventListener('keypress', handleUsernameSubmit);
     }
+
+    // On mobile (especially iOS), tapping outside the input doesn't always blur it
+    // Use touchend event which is more reliable on iOS than click
+    const blurInputOnOutsideTap = (event) => {
+      if (usernameInput && document.activeElement === usernameInput) {
+        // Check if the tap/click was outside the input
+        if (!usernameInput.contains(event.target)) {
+          usernameInput.blur();
+        }
+      }
+    };
+
+    // touchend is more reliable on iOS for detecting taps
+    document.addEventListener('touchend', blurInputOnOutsideTap);
+    // Also keep click for desktop and as fallback
+    document.addEventListener('click', blurInputOnOutsideTap);
 
     window.addEventListener('popstate', handlePopState);
   }

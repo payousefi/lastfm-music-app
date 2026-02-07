@@ -524,7 +524,7 @@ header {
 ----------------------------------------------------- */
 input[type="text"] {
     border: 1px solid var(--input-border, rgba(255, 255, 255, 0.6));
-    background: var(--input-bg, rgba(255, 255, 255, 0.35));
+    background: var(--input-bg, rgba(255, 255, 255, 0.15));
     font-family: "Karla", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 15px;
     line-height: 15px;
@@ -540,14 +540,14 @@ input[type="text"] {
 
 input[type="text"]:focus {
     border: 1px solid var(--input-border-focus, rgba(255, 255, 255, 0.8));
-    background: var(--input-bg-focus, rgba(255, 255, 255, 0.4));
+    background: var(--input-bg-focus, rgba(255, 255, 255, 0.3));
     box-shadow:
         inset 0 1px 3px rgba(0, 0, 0, 0.2),
         0 0 12px var(--personality-glow, rgba(255, 255, 255, 0.2));
 }
 
 input[type="text"]::placeholder {
-    color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
 }
 
 @media screen and (max-width: 480px) {
@@ -555,6 +555,8 @@ input[type="text"]::placeholder {
         display: block;
         margin: 0 auto;
         width: 65%;
+        /* Prevent Safari iOS auto-zoom on focus - requires 16px minimum */
+        font-size: 16px;
     }
 }
 
