@@ -1964,22 +1964,6 @@
       usernameInput.addEventListener('keypress', handleUsernameSubmit);
     }
 
-    // On mobile (especially iOS), tapping outside the input doesn't always blur it
-    // Use touchend event which is more reliable on iOS than click
-    const blurInputOnOutsideTap = (event) => {
-      if (usernameInput && document.activeElement === usernameInput) {
-        // Check if the tap/click was outside the input
-        if (!usernameInput.contains(event.target)) {
-          usernameInput.blur();
-        }
-      }
-    };
-
-    // touchend is more reliable on iOS for detecting taps
-    document.addEventListener('touchend', blurInputOnOutsideTap);
-    // Also keep click for desktop and as fallback
-    document.addEventListener('click', blurInputOnOutsideTap);
-
     window.addEventListener('popstate', handlePopState);
   }
 
