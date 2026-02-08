@@ -5,11 +5,7 @@
 
 const express = require('express');
 const config = require('../../config');
-const {
-  validateParam,
-  validateMusicbrainzQuery,
-  isValidMBID
-} = require('../../middleware/security');
+const { validateParam, validateMusicbrainzQuery, isValidMBID } = require('../../middleware/security');
 
 const router = express.Router();
 
@@ -38,12 +34,20 @@ router.get('/artist', validateMusicbrainzQuery, async (req, res) => {
     });
 
     // Forward rate limit headers to client
-    const remaining = response.headers.get('X-RateLimit-Remaining');
+    // MusicBrainz uses both legacy X-RateLimit-* and newer RateLimit-* headers
+    const remaining = response.headers.get('RateLimit-Remaining') || response.headers.get('X-RateLimit-Remaining');
     if (remaining) {
       res.set('X-RateLimit-Remaining', remaining);
     }
 
     const data = await response.json();
+
+    // MusicBrainz returns 200 with error body when rate limited (legacy burst limit)
+    // Convert to 429 so client can detect and back off
+    if (data.error && data.error.toLowerCase().includes('rate limit')) {
+      return res.status(429).json(data);
+    }
+
     res.json(data);
   } catch (error) {
     console.error('MusicBrainz API error:', error);
@@ -74,12 +78,20 @@ router.get(
       });
 
       // Forward rate limit headers to client
-      const remaining = response.headers.get('X-RateLimit-Remaining');
+      // MusicBrainz uses both legacy X-RateLimit-* and newer RateLimit-* headers
+      const remaining = response.headers.get('RateLimit-Remaining') || response.headers.get('X-RateLimit-Remaining');
       if (remaining) {
         res.set('X-RateLimit-Remaining', remaining);
       }
 
       const data = await response.json();
+
+      // MusicBrainz returns 200 with error body when rate limited (legacy burst limit)
+      // Convert to 429 so client can detect and back off
+      if (data.error && data.error.toLowerCase().includes('rate limit')) {
+        return res.status(429).json(data);
+      }
+
       res.json(data);
     } catch (error) {
       console.error('MusicBrainz API error:', error);

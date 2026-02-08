@@ -61,19 +61,27 @@
   };
 
   // MusicBrainz rate limiter - adaptive delay based on remaining requests from headers
-  // MusicBrainz allows ~1200 requests per time window. We adjust speed based on how many are left.
+  // MusicBrainz allows 300 requests per 60s window. We adjust speed based on how many are left.
   const musicBrainzRateLimiter = {
-    remaining: 1200,
+    remaining: 300,
+    rateLimited: false, // Set true when we get a 429 (legacy burst limit)
 
     async waitIfNeeded() {
+      // If we hit a rate limit error, back off significantly
+      if (this.rateLimited) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        this.rateLimited = false;
+        return;
+      }
+
       // Adaptive delay based on remaining requests
-      // remaining > 600: 100ms (fast - plenty of headroom)
-      // remaining 200-600: 500ms (moderate)
-      // remaining < 200: 1000ms (slow, conserve)
+      // remaining > 150: 200ms (fast - plenty of headroom)
+      // remaining 50-150: 500ms (moderate)
+      // remaining < 50: 1000ms (slow, conserve)
       let delay;
-      if (this.remaining > 600) {
-        delay = 100;
-      } else if (this.remaining > 200) {
+      if (this.remaining > 150) {
+        delay = 200;
+      } else if (this.remaining > 50) {
         delay = 500;
       } else {
         delay = 1000;
@@ -86,6 +94,10 @@
       if (remaining !== null) {
         this.remaining = parseInt(remaining, 10);
       }
+    },
+
+    markRateLimited() {
+      this.rateLimited = true;
     }
   };
 
@@ -727,71 +739,26 @@
       const tertiaryL = Math.max(findMinLightnessForContrast(h, s, l, textS, 4.5), 70);
       const mutedL = Math.max(findMinLightnessForContrast(h, s, l, textS, 3), 60);
 
-      document.documentElement.style.setProperty(
-        '--text-primary',
-        `hsl(${h}, ${textS}%, ${primaryL}%)`
-      );
-      document.documentElement.style.setProperty(
-        '--text-secondary',
-        `hsl(${h}, ${textS}%, ${secondaryL}%)`
-      );
-      document.documentElement.style.setProperty(
-        '--text-tertiary',
-        `hsl(${h}, ${textS}%, ${tertiaryL}%)`
-      );
-      document.documentElement.style.setProperty(
-        '--text-muted',
-        `hsl(${h}, ${textS}%, ${mutedL}%)`
-      );
+      document.documentElement.style.setProperty('--text-primary', `hsl(${h}, ${textS}%, ${primaryL}%)`);
+      document.documentElement.style.setProperty('--text-secondary', `hsl(${h}, ${textS}%, ${secondaryL}%)`);
+      document.documentElement.style.setProperty('--text-tertiary', `hsl(${h}, ${textS}%, ${tertiaryL}%)`);
+      document.documentElement.style.setProperty('--text-muted', `hsl(${h}, ${textS}%, ${mutedL}%)`);
 
       // Generate tinted border and background colors
       // Use same hue but high lightness with varying alpha for subtle tinting
       const uiL = 95; // Very light for borders/backgrounds
-      document.documentElement.style.setProperty(
-        '--border-specular',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.1)`
-      );
-      document.documentElement.style.setProperty(
-        '--border-subtle',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`
-      );
-      document.documentElement.style.setProperty(
-        '--border-medium',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.45)`
-      );
-      document.documentElement.style.setProperty(
-        '--border-strong',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.65)`
-      );
-      document.documentElement.style.setProperty(
-        '--bg-subtle',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.08)`
-      );
-      document.documentElement.style.setProperty(
-        '--bg-medium',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.15)`
-      );
-      document.documentElement.style.setProperty(
-        '--bg-strong',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`
-      );
+      document.documentElement.style.setProperty('--border-specular', `hsla(${h}, ${textS}%, ${uiL}%, 0.1)`);
+      document.documentElement.style.setProperty('--border-subtle', `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`);
+      document.documentElement.style.setProperty('--border-medium', `hsla(${h}, ${textS}%, ${uiL}%, 0.45)`);
+      document.documentElement.style.setProperty('--border-strong', `hsla(${h}, ${textS}%, ${uiL}%, 0.65)`);
+      document.documentElement.style.setProperty('--bg-subtle', `hsla(${h}, ${textS}%, ${uiL}%, 0.08)`);
+      document.documentElement.style.setProperty('--bg-medium', `hsla(${h}, ${textS}%, ${uiL}%, 0.15)`);
+      document.documentElement.style.setProperty('--bg-strong', `hsla(${h}, ${textS}%, ${uiL}%, 0.25)`);
       // Input field specific vars (higher opacity for better affordance)
-      document.documentElement.style.setProperty(
-        '--input-bg',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.2)`
-      );
-      document.documentElement.style.setProperty(
-        '--input-bg-focus',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.3)`
-      );
-      document.documentElement.style.setProperty(
-        '--input-border',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.6)`
-      );
-      document.documentElement.style.setProperty(
-        '--input-border-focus',
-        `hsla(${h}, ${textS}%, ${uiL}%, 0.8)`
-      );
+      document.documentElement.style.setProperty('--input-bg', `hsla(${h}, ${textS}%, ${uiL}%, 0.2)`);
+      document.documentElement.style.setProperty('--input-bg-focus', `hsla(${h}, ${textS}%, ${uiL}%, 0.3)`);
+      document.documentElement.style.setProperty('--input-border', `hsla(${h}, ${textS}%, ${uiL}%, 0.6)`);
+      document.documentElement.style.setProperty('--input-border-focus', `hsla(${h}, ${textS}%, ${uiL}%, 0.8)`);
     }
   }
 
@@ -809,10 +776,7 @@
     // Update meta description
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute(
-        'content',
-        `Curious about ${whosText} taste in music? Over the past month...`
-      );
+      metaDescription.setAttribute('content', `Curious about ${whosText} taste in music? Over the past month...`);
     }
   }
 
@@ -884,10 +848,31 @@
         // Update rate limiter from response headers
         musicBrainzRateLimiter.updateFromHeaders(searchResponse.headers);
 
-        if (searchResponse.ok) {
+        // Handle rate limit (429 from server, which converts MB's 200+error body)
+        if (searchResponse.status === 429) {
+          musicBrainzRateLimiter.markRateLimited();
+          // Retry once after backing off
+          await musicBrainzRateLimiter.waitIfNeeded();
+          const retryResponse = await fetch(searchUrl);
+          musicBrainzRateLimiter.updateFromHeaders(retryResponse.headers);
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            if (retryData.artists && retryData.artists.length > 0) {
+              const mbArtist = retryData.artists[0];
+              if (mbArtist.name && mbArtist.name.toLowerCase() === artistName.toLowerCase()) {
+                effectiveMbid = mbArtist.id;
+              }
+            }
+          }
+        } else if (searchResponse.ok) {
           const searchData = await searchResponse.json();
           if (searchData.artists && searchData.artists.length > 0) {
-            effectiveMbid = searchData.artists[0].id;
+            // Verify the returned artist name matches (case-insensitive)
+            // MusicBrainz may return a different artist with the same name
+            const mbArtist = searchData.artists[0];
+            if (mbArtist.name && mbArtist.name.toLowerCase() === artistName.toLowerCase()) {
+              effectiveMbid = mbArtist.id;
+            }
           }
         }
       } catch (error) {
@@ -911,8 +896,38 @@
       // Update rate limiter from response headers
       musicBrainzRateLimiter.updateFromHeaders(response.headers);
 
-      if (response.ok) {
+      // Handle rate limit (429 from server)
+      if (response.status === 429) {
+        musicBrainzRateLimiter.markRateLimited();
+        // Retry once after backing off
+        await musicBrainzRateLimiter.waitIfNeeded();
+        const retryResponse = await fetch(mbUrl);
+        musicBrainzRateLimiter.updateFromHeaders(retryResponse.headers);
+        if (retryResponse.ok) {
+          const data = await retryResponse.json();
+          if (data.name && data.name.toLowerCase() !== artistName.toLowerCase()) {
+            return { mbid: null, discogsId: null };
+          }
+          if (data.relations) {
+            for (const rel of data.relations) {
+              if (rel.type === 'discogs' && rel.url && rel.url.resource) {
+                const match = rel.url.resource.match(/discogs\.com\/artist\/(\d+)/);
+                if (match) {
+                  discogsId = match[1];
+                  break;
+                }
+              }
+            }
+          }
+        }
+      } else if (response.ok) {
         const data = await response.json();
+
+        // Verify the MBID resolves to the correct artist name
+        // This catches cases where Last.fm provides a wrong MBID (e.g., "Drama" → wrong artist)
+        if (data.name && data.name.toLowerCase() !== artistName.toLowerCase()) {
+          return { mbid: null, discogsId: null };
+        }
 
         // Find Discogs relation and extract artist ID
         if (data.relations) {
@@ -1081,9 +1096,7 @@
         }
 
         // Find any image that meets size requirements
-        const largeImage = validImages.find(
-          (img) => img.width >= MIN_SIZE && img.height >= MIN_SIZE
-        );
+        const largeImage = validImages.find((img) => img.width >= MIN_SIZE && img.height >= MIN_SIZE);
 
         if (largeImage) {
           return largeImage.uri;
@@ -1100,19 +1113,16 @@
   }
 
   /**
-   * Prefetch all MusicBrainz data in parallel (no rate limit)
+   * Prefetch all MusicBrainz data sequentially to respect rate limits
+   * MusicBrainz has a burst rate limit that triggers even when overall rate is fine,
+   * so parallel requests can cause 429 errors despite having remaining quota
    * Returns map of artistName -> { mbid, discogsId }
    */
   async function prefetchMusicBrainzData(artists) {
-    const promises = artists.map(async (artist) => {
-      const data = await getMusicBrainzData(artist.name, artist.mbid);
-      return { name: artist.name, ...data };
-    });
-
-    const results = await Promise.all(promises);
     const dataMap = {};
-    for (const result of results) {
-      dataMap[result.name] = { mbid: result.mbid, discogsId: result.discogsId };
+    for (const artist of artists) {
+      const data = await getMusicBrainzData(artist.name, artist.mbid);
+      dataMap[artist.name] = { mbid: data.mbid, discogsId: data.discogsId };
     }
     return dataMap;
   }
@@ -1348,9 +1358,7 @@
     const shuffledArtists = shuffleArray(artists);
 
     // Phase 1: Get MusicBrainz data if needed (check cache first)
-    const needsMusicBrainz = CONFIG.imageSources.some(
-      (s) => s === 'DISCOGS' || s === 'THE_AUDIO_DB'
-    );
+    const needsMusicBrainz = CONFIG.imageSources.some((s) => s === 'DISCOGS' || s === 'THE_AUDIO_DB');
     let mbDataMap = {};
 
     if (needsMusicBrainz) {
@@ -1433,9 +1441,7 @@
 
       // Create seeded random for deterministic headline generation
       // Use a different offset from the seed to get different values than color
-      const headlineRandom = currentPersonalitySeed
-        ? createSeededRandom(currentPersonalitySeed + 1000)
-        : null;
+      const headlineRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 1000) : null;
       // Only the headline comes from the AI API
       const analysis = await analyzePersonality(validData, headlineRandom);
       // Add a variable delay (2.5-4s) so the rolling text animation plays
@@ -1446,9 +1452,7 @@
         displayPersonality(analysis.headline);
         // Animate background to mood-influenced color when personality is revealed
         // Uses client-side mood calculation (same as progressive) for consistency
-        const colorRandom = currentPersonalitySeed
-          ? createSeededRandom(currentPersonalitySeed + 2000)
-          : null;
+        const colorRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 2000) : null;
         animateBackgroundColor(generateBlendedColor(colorRandom, finalMoodWeights));
       }, thinkingDelay);
     }
@@ -1477,10 +1481,7 @@
 
         // Update background color progressively, but only every 3rd artist
         // to avoid rapid color flipping. Uses a slow 2.5s transition for smooth blending.
-        if (
-          loadedArtistNames.length % 3 === 1 ||
-          loadedArtistNames.length === shuffledArtists.length
-        ) {
+        if (loadedArtistNames.length % 3 === 1 || loadedArtistNames.length === shuffledArtists.length) {
           const loadedPersonalityData = personalityData.filter(
             (d) => loadedArtistNames.includes(d.name) && (d.genre || d.style || d.mood)
           );
@@ -1518,10 +1519,7 @@
 
             // Slow transition for progressive updates (converges toward final color)
             // Uses blended mood weights so color shifts gradually instead of jumping
-            animateBackgroundColor(
-              generateBlendedColor(progressiveRandom, moodWeights, confidence),
-              { duration: 2.5 }
-            );
+            animateBackgroundColor(generateBlendedColor(progressiveRandom, moodWeights, confidence), { duration: 2.5 });
           }
         }
       }
@@ -1569,8 +1567,7 @@
     });
 
     // Add heading for screen readers
-    contentEl.innerHTML =
-      `<h2 class="visually-hidden">Top ${artists.length} artists this month</h2>` + tiles.join('');
+    contentEl.innerHTML = `<h2 class="visually-hidden">Top ${artists.length} artists this month</h2>` + tiles.join('');
     slideDown(contentEl, 1000);
 
     fetchAllArtistImages(artists).then(() => {
@@ -1864,10 +1861,7 @@
           if (!tile) continue;
 
           // Only update tiles that are in loading state
-          if (
-            tile.classList.contains('loading-image') ||
-            tile.classList.contains('loading-active')
-          ) {
+          if (tile.classList.contains('loading-image') || tile.classList.contains('loading-active')) {
             const bestSource = getBestSourceForTile(tile, currentPrimarySource, true);
             if (bestSource) {
               showSourceLayer(tile, bestSource);
@@ -1879,12 +1873,7 @@
       }
 
       // Start rotation once we have 2+ sources (unless user manually disabled it)
-      if (
-        availableSources.length >= 2 &&
-        !autoRotationInterval &&
-        !autoRotationStartTimeout &&
-        !autoRotationDisabled
-      ) {
+      if (availableSources.length >= 2 && !autoRotationInterval && !autoRotationStartTimeout && !autoRotationDisabled) {
         // Small delay before starting rotation
         autoRotationStartTimeout = setTimeout(() => {
           autoRotationStartTimeout = null;
@@ -1905,9 +1894,7 @@
     stopAutoRotation();
     autoRotationDisabled = true;
 
-    const selectedRadio = document.querySelector(
-      '.image-sources-config input[type="radio"]:checked'
-    );
+    const selectedRadio = document.querySelector('.image-sources-config input[type="radio"]:checked');
     if (!selectedRadio) return;
 
     const primarySource = selectedRadio.value;
