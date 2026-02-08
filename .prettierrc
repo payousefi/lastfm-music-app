@@ -5,8 +5,7 @@
   "semi": true,
   "trailingComma": "none",
   "bracketSpacing": true,
-  "printWidth": 100,
-  "htmlWhitespaceSensitivity": "ignore",
+  "printWidth": 120,
   "overrides": [
     {
       "files": "*.css",

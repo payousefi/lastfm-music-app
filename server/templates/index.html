@@ -3,18 +3,12 @@
   <head>
     <title>Music &mdash; {{title}}</title>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-    <meta
-      name="keywords"
-      content="music, last.fm, design, personal, payam yousefi, css3, javascript"
-    />
+    <meta name="keywords" content="music, last.fm, design, personal, payam yousefi, css3, javascript" />
     <meta name="description" content="{{description}}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Open Graph meta tags for social sharing -->
     <meta property="og:title" content="Music — {{title}}" />
-    <meta
-      property="og:description"
-      content="Curious about {{whosPlain}} taste in music? Over the past month..."
-    />
+    <meta property="og:description" content="Curious about {{whosPlain}} taste in music? Over the past month..." />
     <meta property="og:url" content="https://music.payamyousefi.com/{{username}}" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://music.payamyousefi.com/img/og-image.png" />
@@ -63,20 +57,13 @@
             aria-label="Last.fm username"
             placeholder="username"
           />
-          <span aria-hidden="true">
-            and press
-            <b>enter</b>
-            .
-          </span>
+          <span aria-hidden="true">and press enter.</span>
         </p>
       </div>
 
       <!-- Main content area with ARIA live region for dynamic updates -->
       <main role="main">
         <p class="music-personality" aria-live="polite"></p>
-        <p class="rate-limit-note">
-          Artist images load at slower speeds while adapting to API rate limit.
-        </p>
         <div class="content" aria-live="polite" aria-atomic="false"></div>
       </main>
 
@@ -89,10 +76,9 @@
           <!-- Copyright group -->
           <p class="footer-copyright">
             &copy; {{year}}
-            <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">
-              Payam Yousefi
-            </a>
-            · designed &amp; developed by Payam
+            <a href="https://payamyousefi.com/" target="_blank" rel="noopener noreferrer">Payam Yousefi</a>
+            <span class="credit-sep">·</span>
+            <span class="credit-line">designed &amp; developed by Payam</span>
           </p>
 
           <!-- Data sources group -->
@@ -104,25 +90,12 @@
             <span class="data-sep">·</span>
             <span class="data-group artist-data">
               artist data via
-              <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">
-                MusicBrainz
-              </a>
-              ·
-              <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">
-                Discogs
-              </a>
-              ·
-              <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">
-                TheAudioDB
-              </a>
-              ·
-              <a
-                href="https://performance-partners.apple.com/search-api"
-                target="_blank"
-                rel="noopener noreferrer"
+              <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">MusicBrainz</a> ·
+              <a href="https://www.discogs.com/" target="_blank" rel="noopener noreferrer">Discogs</a> ·
+              <a href="https://www.theaudiodb.com/" target="_blank" rel="noopener noreferrer">TheAudioDB</a> ·
+              <a href="https://performance-partners.apple.com/search-api" target="_blank" rel="noopener noreferrer"
+                >iTunes</a
               >
-                iTunes
-              </a>
             </span>
           </p>
         </div>

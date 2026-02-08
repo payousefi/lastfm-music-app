@@ -1537,32 +1537,6 @@
   }
 
   /**
-   * Show/hide the rate limit note with delay before hiding
-   */
-  function toggleRateLimitNote(show, immediate = false) {
-    const note = document.querySelector('.rate-limit-note');
-    if (!note) return;
-
-    if (show) {
-      note.classList.remove('fading');
-      note.classList.add('visible');
-    } else {
-      if (immediate) {
-        note.classList.remove('visible', 'fading');
-      } else {
-        // Add delay before hiding to allow users to finish reading
-        setTimeout(() => {
-          note.classList.add('fading');
-          // After fade animation completes, hide completely
-          setTimeout(() => {
-            note.classList.remove('visible', 'fading');
-          }, 300);
-        }, 3000); // 3 second delay before starting fade
-      }
-    }
-  }
-
-  /**
    * Render artist tiles with accessibility support
    * Each tile has 3 source layer divs (one per image source) for smooth crossfading
    */
@@ -1599,13 +1573,7 @@
       `<h2 class="visually-hidden">Top ${artists.length} artists this month</h2>` + tiles.join('');
     slideDown(contentEl, 1000);
 
-    // Show rate limit note while loading images
-    toggleRateLimitNote(true);
-
     fetchAllArtistImages(artists).then(() => {
-      // Hide rate limit note when all images are loaded
-      toggleRateLimitNote(false);
-
       // Mark primary source as available for rotation
       addAvailableSource(CONFIG.imageSources[0]);
 
@@ -1686,7 +1654,6 @@
     updateHeaderSubtitle(username);
     // Wait 1s incase we  error out fast and shouldn't show loading state
     showPersonalityLoadingTimeout = setTimeout(() => showPersonalityLoading(username), 1000);
-    toggleRateLimitNote(false, true);
 
     const apiUrl = `/api/lastfm/user/${encodeURIComponent(sanitizedUsername)}/topartists?period=${CONFIG.period}&limit=${CONFIG.artistLimit}`;
 
