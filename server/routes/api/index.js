@@ -1,9 +1,11 @@
 /**
  * API Routes Aggregator
- * Combines all API route modules
+ * Combines all API route modules with security middleware
  */
 
 const express = require('express');
+const { createAIRateLimiter } = require('../../middleware/security');
+
 const router = express.Router();
 
 // Import API route modules
@@ -20,7 +22,9 @@ router.use('/musicbrainz', musicbrainzRouter);
 router.use('/discogs', discogsRouter);
 router.use('/audiodb', audiodbRouter);
 router.use('/itunes', itunesRouter);
-router.use('/personality', personalityRouter);
+
+// Personality endpoint gets stricter rate limiting (AI calls are expensive)
+router.use('/personality', createAIRateLimiter(), personalityRouter);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

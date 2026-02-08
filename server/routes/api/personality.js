@@ -7,6 +7,7 @@
 const express = require('express');
 const aiPersonality = require('../../services/ai-personality');
 const templatePersonality = require('../../services/personality');
+const { validatePersonalityInput } = require('../../middleware/security');
 
 const router = express.Router();
 
@@ -25,8 +26,13 @@ const router = express.Router();
  * - moodCounts: Breakdown of moods
  * - genreCounts: Breakdown of genres
  * - source: 'ai', 'cache', 'template', or 'fallback'
+ *
+ * Security:
+ * - Stricter rate limiting applied at the router level (see api/index.js)
+ * - Input validation & prompt injection defense via validatePersonalityInput
+ * - Only whitelisted mood/genre values reach the AI prompt
  */
-router.post('/', async (req, res) => {
+router.post('/', validatePersonalityInput, async (req, res) => {
   try {
     // Note: We intentionally don't accept username - PII-friendly design
     // Only genre/mood data from artists is used for personality generation

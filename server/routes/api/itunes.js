@@ -5,6 +5,7 @@
 
 const express = require('express');
 const config = require('../../config');
+const { validateItunesQuery } = require('../../middleware/security');
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ const router = express.Router();
  * GET /api/itunes/search
  * Search iTunes API
  */
-router.get('/search', async (req, res) => {
+router.get('/search', validateItunesQuery, async (req, res) => {
   try {
     const { term, entity, limit } = req.query;
 
@@ -43,7 +44,7 @@ router.get('/search', async (req, res) => {
  * GET /api/itunes/lookup
  * Lookup iTunes API by ID
  */
-router.get('/lookup', async (req, res) => {
+router.get('/lookup', validateItunesQuery, async (req, res) => {
   try {
     const { id, entity, limit } = req.query;
 

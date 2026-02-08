@@ -68,10 +68,25 @@ const config = {
     model: 'claude-haiku-4-5-20251001'
   },
 
-  // Rate limiting
-  rateLimit: {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100
+  // Security settings
+  security: {
+    // Global API rate limiting (only applies to /api/* routes, not static files)
+    // A single page load with 12 artists triggers ~60+ API calls, so this
+    // needs to be generous enough for normal browsing but block automated abuse
+    rateLimit: {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
+      maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 300
+    },
+    // Stricter rate limiting for AI personality endpoint (Claude API calls cost money)
+    aiRateLimit: {
+      windowMs: parseInt(process.env.AI_RATE_LIMIT_WINDOW_MS, 10) || 60000,
+      maxRequests: parseInt(process.env.AI_RATE_LIMIT_MAX_REQUESTS, 10) || 10
+    },
+    // CORS allowed origins
+    allowedOrigins: (process.env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
   },
 
   // Default app settings
