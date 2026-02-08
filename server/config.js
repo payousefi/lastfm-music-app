@@ -62,6 +62,12 @@ const config = {
     baseUrl: 'https://itunes.apple.com'
   },
 
+  // Anthropic API (for AI-powered personality headlines)
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    model: 'claude-haiku-4-5-20251001'
+  },
+
   // Rate limiting
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
