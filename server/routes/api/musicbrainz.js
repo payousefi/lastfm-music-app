@@ -40,6 +40,13 @@ router.get('/artist', validateMusicbrainzQuery, async (req, res) => {
       res.set('X-RateLimit-Remaining', remaining);
     }
 
+    if (!response.ok) {
+      const statusCode = response.status === 429 ? 429 : 502;
+      const text = await response.text().catch(() => '');
+      console.error(`MusicBrainz search API returned ${response.status}: ${text.substring(0, 200)}`);
+      return res.status(statusCode).json({ error: `MusicBrainz API returned ${response.status}` });
+    }
+
     const data = await response.json();
 
     // MusicBrainz returns 200 with error body when rate limited (legacy burst limit)
@@ -82,6 +89,13 @@ router.get(
       const remaining = response.headers.get('RateLimit-Remaining') || response.headers.get('X-RateLimit-Remaining');
       if (remaining) {
         res.set('X-RateLimit-Remaining', remaining);
+      }
+
+      if (!response.ok) {
+        const statusCode = response.status === 429 ? 429 : 502;
+        const text = await response.text().catch(() => '');
+        console.error(`MusicBrainz lookup API returned ${response.status}: ${text.substring(0, 200)}`);
+        return res.status(statusCode).json({ error: `MusicBrainz API returned ${response.status}` });
       }
 
       const data = await response.json();

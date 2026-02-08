@@ -35,6 +35,13 @@ router.get(
         res.set('X-Discogs-Ratelimit-Remaining', remaining);
       }
 
+      if (!response.ok) {
+        const statusCode = response.status === 429 ? 429 : 502;
+        const text = await response.text().catch(() => '');
+        console.error(`Discogs API returned ${response.status}: ${text.substring(0, 200)}`);
+        return res.status(statusCode).json({ error: `Discogs API returned ${response.status}` });
+      }
+
       const data = await response.json();
       res.json(data);
     } catch (error) {

@@ -32,6 +32,13 @@ router.get('/search', validateItunesQuery, async (req, res) => {
       }
     });
 
+    if (!response.ok) {
+      const statusCode = response.status === 429 ? 429 : 502;
+      const text = await response.text().catch(() => '');
+      console.error(`iTunes search API returned ${response.status}: ${text.substring(0, 200)}`);
+      return res.status(statusCode).json({ error: `iTunes API returned ${response.status}` });
+    }
+
     const data = await response.json();
     res.json(data);
   } catch (error) {
@@ -62,6 +69,13 @@ router.get('/lookup', validateItunesQuery, async (req, res) => {
         Accept: 'application/json'
       }
     });
+
+    if (!response.ok) {
+      const statusCode = response.status === 429 ? 429 : 502;
+      const text = await response.text().catch(() => '');
+      console.error(`iTunes lookup API returned ${response.status}: ${text.substring(0, 200)}`);
+      return res.status(statusCode).json({ error: `iTunes API returned ${response.status}` });
+    }
 
     const data = await response.json();
     res.json(data);

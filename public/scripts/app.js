@@ -117,7 +117,6 @@
   // Personality loading animation timeout
   let showPersonalityLoadingTimeout = null;
   let personalityAnimationTimeout = null;
-  let personalityDisplayTimeout = null; // Timeout for delayed personality reveal
 
   // Auto-rotation state
   let autoRotationInterval = null;
@@ -1113,21 +1112,6 @@
   }
 
   /**
-   * Prefetch all MusicBrainz data sequentially to respect rate limits
-   * MusicBrainz has a burst rate limit that triggers even when overall rate is fine,
-   * so parallel requests can cause 429 errors despite having remaining quota
-   * Returns map of artistName -> { mbid, discogsId }
-   */
-  async function prefetchMusicBrainzData(artists) {
-    const dataMap = {};
-    for (const artist of artists) {
-      const data = await getMusicBrainzData(artist.name, artist.mbid);
-      dataMap[artist.name] = { mbid: data.mbid, discogsId: data.discogsId };
-    }
-    return dataMap;
-  }
-
-  /**
    * Fetch image for a specific source
    * Returns { source, imageUrl } or { source, imageUrl: null }
    */
@@ -1165,6 +1149,13 @@
     imageCache[cacheKey] = fetchedUrl;
 
     return { source, imageUrl: fetchedUrl };
+  }
+
+  /**
+   * Check if a source needs MusicBrainz data
+   */
+  function sourceNeedsMbData(source) {
+    return source === 'DISCOGS' || source === 'THE_AUDIO_DB';
   }
 
   /**
@@ -1333,197 +1324,285 @@
   }
 
   /**
-   * Shuffle array using Fisher-Yates algorithm
-   * Returns a new shuffled array, doesn't modify original
-   */
-  function shuffleArray(array) {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
-
-  /**
-   * Fetch all artist images with optimized API calls:
-   * 1. Prefetch all MusicBrainz data in parallel (no rate limit) - cached for reuse
-   * 2. Fetch TheAudioDB data for personality analysis
-   * 3. Fetch images in random order with rate limiting
-   * 4. Reveal each tile immediately as its image loads
-   * 5. Analyze and display music personality
+   * Fetch all artist images with two parallel sequential pipelines:
+   * 1. iTunes pipeline: processes artists one-by-one through iTunes (no MB dependency)
+   * 2. MB pipeline: processes artists one-by-one through MusicBrainz (rate limited)
+   * Both pipelines run concurrently. Per-artist, if iTunes finds an image it's used
+   * immediately. If not, MB-dependent fallbacks (Discogs, AudioDB) are tried.
+   * AudioDB personality data is fetched per-artist as MB data arrives.
+   * Personality headline is analyzed once all personality data is collected.
    */
   async function fetchAllArtistImages(artists) {
-    // Shuffle artists for random reveal order
-    const shuffledArtists = shuffleArray(artists);
-
-    // Phase 1: Get MusicBrainz data if needed (check cache first)
+    // Determine if any configured source needs MusicBrainz data
     const needsMusicBrainz = CONFIG.imageSources.some((s) => s === 'DISCOGS' || s === 'THE_AUDIO_DB');
-    let mbDataMap = {};
+
+    // Identify which sources are independent (no MB dependency)
+    const independentSources = CONFIG.imageSources.filter((s) => !sourceNeedsMbData(s));
+
+    // --- Pipeline 1: MusicBrainz data (sequential, rate limited) ---
+    // Per-artist MB data promises - resolves as each artist's MB data becomes available
+    const mbDataPromises = {};
 
     if (needsMusicBrainz) {
-      // Check if we have cached MB data for all artists
-      const uncachedArtists = artists.filter((a) => imageCache[`${a.name}:MB_DATA`] === undefined);
-
-      if (uncachedArtists.length > 0) {
-        // Fetch MB data for uncached artists
-        const newMbData = await prefetchMusicBrainzData(uncachedArtists);
-        // Cache the results
-        for (const [name, data] of Object.entries(newMbData)) {
-          imageCache[`${name}:MB_DATA`] = data;
-        }
-      }
-
-      // Build mbDataMap from cache
+      // Chain MB fetches sequentially but expose individual promises
+      let mbChain = Promise.resolve();
       for (const artist of artists) {
-        mbDataMap[artist.name] = imageCache[`${artist.name}:MB_DATA`] || {};
+        const artistName = artist.name;
+        const artistMbid = artist.mbid;
+
+        mbDataPromises[artistName] = new Promise((resolve) => {
+          mbChain = mbChain.then(async () => {
+            // Check cache first
+            if (imageCache[`${artistName}:MB_DATA`] !== undefined) {
+              resolve(imageCache[`${artistName}:MB_DATA`]);
+              return;
+            }
+            const data = await getMusicBrainzData(artistName, artistMbid);
+            const result = { mbid: data.mbid, discogsId: data.discogsId };
+            imageCache[`${artistName}:MB_DATA`] = result;
+            resolve(result);
+          });
+        });
       }
     }
 
-    // Phase 2: Fetch TheAudioDB data for personality analysis (parallel, no rate limit)
+    /**
+     * Get MB data for an artist - returns promise from MB pipeline or empty object
+     */
+    function getMbDataForArtist(artistName) {
+      if (!needsMusicBrainz) return Promise.resolve({});
+      return mbDataPromises[artistName] || Promise.resolve({});
+    }
+
+    // --- Pipeline 2: Independent source images (sequential per-source, no rate limit) ---
+    // For each independent source (e.g., iTunes), create a sequential chain that processes
+    // artists one-by-one. This avoids flooding any single API with parallel requests.
+    // Each artist gets a per-source promise that resolves with the image result.
+    const independentImagePromises = {}; // { artistName: { ITUNES: Promise<result>, ... } }
+
+    for (const source of independentSources) {
+      let sourceChain = Promise.resolve();
+      for (const artist of artists) {
+        const artistName = artist.name;
+        if (!independentImagePromises[artistName]) {
+          independentImagePromises[artistName] = {};
+        }
+
+        independentImagePromises[artistName][source] = new Promise((resolve) => {
+          sourceChain = sourceChain.then(async () => {
+            const result = await fetchImageForSource(artistName, source, {});
+            resolve(result);
+          });
+        });
+      }
+    }
+
+    // --- Per-artist personality data (incremental, as MB data arrives) ---
+    // Collect personality data incrementally so progressive color updates can use
+    // whatever data is available so far, without waiting for all artists to complete.
+    const resolvedPersonalityMap = {}; // artistName -> personality data (populated as each resolves)
+
     const personalityDataPromises = artists.map(async (artist) => {
-      const mbData = mbDataMap[artist.name] || {};
+      let data;
 
-      // Check personality cache first
+      // Check personality cache first (no need to wait for MB)
       if (personalityCache[artist.name]) {
-        return { ...personalityCache[artist.name], playcount: parseInt(artist.playcount, 10) || 1 };
+        data = { ...personalityCache[artist.name], playcount: parseInt(artist.playcount, 10) || 1 };
+      } else {
+        // Wait for this artist's MB data (resolves as soon as this artist's MB call completes)
+        const mbData = await getMbDataForArtist(artist.name);
+
+        // Fetch from TheAudioDB if we have MBID
+        if (mbData.mbid) {
+          const audioDbData = await fetchAudioDBData(mbData.mbid);
+          data = {
+            name: artist.name,
+            genre: audioDbData.genre,
+            style: audioDbData.style,
+            mood: audioDbData.mood,
+            playcount: parseInt(artist.playcount, 10) || 1
+          };
+          personalityCache[artist.name] = data;
+        } else {
+          data = {
+            name: artist.name,
+            genre: null,
+            style: null,
+            mood: null,
+            playcount: parseInt(artist.playcount, 10) || 1
+          };
+        }
       }
 
-      // Fetch from TheAudioDB if we have MBID
-      if (mbData.mbid) {
-        const audioDbData = await fetchAudioDBData(mbData.mbid);
-        const data = {
-          name: artist.name,
-          genre: audioDbData.genre,
-          style: audioDbData.style,
-          mood: audioDbData.mood,
-          playcount: parseInt(artist.playcount, 10) || 1
-        };
-        personalityCache[artist.name] = data;
-        return data;
-      }
-
-      return {
-        name: artist.name,
-        genre: null,
-        style: null,
-        mood: null,
-        playcount: parseInt(artist.playcount, 10) || 1
-      };
+      // Store immediately so progressive color updates can access it
+      resolvedPersonalityMap[artist.name] = data;
+      return data;
     });
 
-    const personalityData = await Promise.all(personalityDataPromises);
-
-    // Analyze and display personality (with minimum delay for animation effect)
-    const validData = personalityData.filter((d) => d.genre || d.style || d.mood);
-    if (validData.length > 0) {
-      // Calculate mood weights client-side (used for background color)
-      // This is separate from the AI headline - background color is always local
-      // Uses proportional weights for smooth blended colors instead of a single dominant mood
-      const finalMoodCounts = {};
-      let finalMoodTotal = 0;
-      for (const d of validData) {
-        if (d.mood) {
-          const pc = d.playcount || 1;
-          finalMoodCounts[d.mood] = (finalMoodCounts[d.mood] || 0) + pc;
-          finalMoodTotal += pc;
-        }
-      }
-      // Build normalized mood weights (e.g., { sad: 0.4, angry: 0.35, relaxed: 0.25 })
-      const finalMoodWeights = {};
-      if (finalMoodTotal > 0) {
-        for (const [mood, count] of Object.entries(finalMoodCounts)) {
-          finalMoodWeights[mood] = count / finalMoodTotal;
-        }
-      } else {
-        finalMoodWeights['relaxed'] = 1;
-      }
-
-      // Create seeded random for deterministic headline generation
-      // Use a different offset from the seed to get different values than color
-      const headlineRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 1000) : null;
-      // Only the headline comes from the AI API
-      const analysis = await analyzePersonality(validData, headlineRandom);
-      // Add a variable delay (2.5-4s) so the rolling text animation plays
-      // Variable timing feels more organic, like the app is actually "thinking"
-      const thinkingDelay = 2500 + Math.random() * 1500;
-      // Store timeout ID so it can be cancelled if user switches before reveal
-      personalityDisplayTimeout = setTimeout(() => {
-        displayPersonality(analysis.headline);
-        // Animate background to mood-influenced color when personality is revealed
-        // Uses client-side mood calculation (same as progressive) for consistency
-        const colorRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 2000) : null;
-        animateBackgroundColor(generateBlendedColor(colorRandom, finalMoodWeights));
-      }, thinkingDelay);
-    }
-
-    // Phase 3: Fetch images in random order, reveal each immediately
-    // Track loaded artists for progressive background color updates
-    const loadedArtistNames = [];
-
-    for (const artist of shuffledArtists) {
-      const mbData = mbDataMap[artist.name] || {};
-
-      // Mark tile as actively loading (pulsing star)
-      setTileLoadingActive(artist.name);
-
-      // Rate limiting is handled inside fetchDiscogsImageById via discogsRateLimiter
-      // fetchArtistImageWithData now returns { source, imageUrl }
-      const { source, imageUrl } = await fetchArtistImageWithData(artist.name, mbData);
-      const result = await prepareTileImage(artist.name, imageUrl, source);
-
-      // Reveal tile immediately
-      if (result) {
-        revealRow([result]);
-
-        // Track this artist as loaded
-        loadedArtistNames.push(artist.name);
-
-        // Update background color progressively, but only every 3rd artist
-        // to avoid rapid color flipping. Uses a slow 2.5s transition for smooth blending.
-        if (loadedArtistNames.length % 3 === 1 || loadedArtistNames.length === shuffledArtists.length) {
-          const loadedPersonalityData = personalityData.filter(
-            (d) => loadedArtistNames.includes(d.name) && (d.genre || d.style || d.mood)
-          );
-
-          if (loadedPersonalityData.length > 0) {
-            // Create a seeded random based on current loaded artists for some consistency
-            // Use a hash of loaded artist names to get deterministic but evolving colors
-            const loadedHash = hashString(loadedArtistNames.join('|'));
-            const progressiveRandom = createSeededRandom(loadedHash);
-
-            // Calculate mood weights locally (no API call needed for background color)
-            // Uses proportional weights for blended colors instead of single dominant mood
-            const moodCounts = {};
-            let moodTotal = 0;
-            for (const d of loadedPersonalityData) {
-              if (d.mood) {
-                const pc = d.playcount || 1;
-                moodCounts[d.mood] = (moodCounts[d.mood] || 0) + pc;
-                moodTotal += pc;
-              }
-            }
-            // Build normalized mood weights (e.g., { sad: 0.5, angry: 0.3, relaxed: 0.2 })
-            const moodWeights = {};
-            if (moodTotal > 0) {
-              for (const [mood, count] of Object.entries(moodCounts)) {
-                moodWeights[mood] = count / moodTotal;
-              }
-            } else {
-              moodWeights['relaxed'] = 1;
-            }
-
-            // Confidence factor: how much of the data we've seen (0.0 to 1.0)
-            // Early artists produce muted colors; converges to full saturation as more load
-            const confidence = loadedArtistNames.length / shuffledArtists.length;
-
-            // Slow transition for progressive updates (converges toward final color)
-            // Uses blended mood weights so color shifts gradually instead of jumping
-            animateBackgroundColor(generateBlendedColor(progressiveRandom, moodWeights, confidence), { duration: 2.5 });
+    // Personality analysis runs concurrently with image fetching
+    const personalityPromise = Promise.all(personalityDataPromises).then(async (personalityData) => {
+      const validData = personalityData.filter((d) => d.genre || d.style || d.mood);
+      if (validData.length > 0) {
+        const finalMoodCounts = {};
+        let finalMoodTotal = 0;
+        for (const d of validData) {
+          if (d.mood) {
+            const pc = d.playcount || 1;
+            finalMoodCounts[d.mood] = (finalMoodCounts[d.mood] || 0) + pc;
+            finalMoodTotal += pc;
           }
         }
+        const finalMoodWeights = {};
+        if (finalMoodTotal > 0) {
+          for (const [mood, count] of Object.entries(finalMoodCounts)) {
+            finalMoodWeights[mood] = count / finalMoodTotal;
+          }
+        } else {
+          finalMoodWeights['relaxed'] = 1;
+        }
+
+        const headlineRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 1000) : null;
+        const analysis = await analyzePersonality(validData, headlineRandom);
+        displayPersonality(analysis.headline);
+        const colorRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 2000) : null;
+        animateBackgroundColor(generateBlendedColor(colorRandom, finalMoodWeights));
+
+        return { hasPersonality: true };
       }
+      return { hasPersonality: false };
+    });
+
+    // Track whether personality will set the final color (resolved later)
+    let personalityWillSetFinalColor = false;
+
+    personalityPromise.then((result) => {
+      personalityWillSetFinalColor = result.hasPersonality;
+    });
+
+    // --- Per-artist image resolution: combine both pipelines ---
+    // For each artist, try sources in config priority order:
+    // - Independent sources (iTunes): await the sequential pipeline promise
+    // - Dependent sources (Discogs, AudioDB): await MB data, then fetch sequentially
+    // Tiles reveal as each artist's best image is found.
+    const loadedArtistNames = [];
+    const totalArtists = artists.length;
+    let lastProgressiveColorPersonalityCount = 0; // Track how many personality entries drove the last color update
+
+    /**
+     * Try to update the background color progressively using whatever personality
+     * data and loaded tiles are available right now. Non-blocking — never awaits
+     * the full personality promise.
+     * @param {boolean} [force=false] - If true, update even if not at a regular interval
+     */
+    function tryProgressiveColorUpdate(force = false) {
+      if (loadedArtistNames.length === 0) return;
+
+      const isLastBatch = loadedArtistNames.length === totalArtists;
+      const atInterval = loadedArtistNames.length % 3 === 1;
+      const shouldUpdate = force || atInterval || (isLastBatch && !personalityWillSetFinalColor);
+      if (!shouldUpdate) return;
+
+      // Gather whatever personality data has resolved so far (non-blocking)
+      const availablePersonalityData = loadedArtistNames
+        .map((name) => resolvedPersonalityMap[name])
+        .filter((d) => d && (d.genre || d.style || d.mood));
+
+      // Only update if we have new personality data since the last color update
+      if (availablePersonalityData.length === 0) return;
+      if (!force && availablePersonalityData.length === lastProgressiveColorPersonalityCount) return;
+      lastProgressiveColorPersonalityCount = availablePersonalityData.length;
+
+      const sortedNames = [...loadedArtistNames].sort();
+      const loadedHash = hashString(sortedNames.join('|'));
+      const progressiveRandom = createSeededRandom(loadedHash);
+
+      const moodCounts = {};
+      let moodTotal = 0;
+      for (const d of availablePersonalityData) {
+        if (d.mood) {
+          const pc = d.playcount || 1;
+          moodCounts[d.mood] = (moodCounts[d.mood] || 0) + pc;
+          moodTotal += pc;
+        }
+      }
+      const moodWeights = {};
+      if (moodTotal > 0) {
+        for (const [mood, count] of Object.entries(moodCounts)) {
+          moodWeights[mood] = count / moodTotal;
+        }
+      } else {
+        moodWeights['relaxed'] = 1;
+      }
+
+      const confidence = loadedArtistNames.length / totalArtists;
+      animateBackgroundColor(generateBlendedColor(progressiveRandom, moodWeights, confidence), {
+        duration: 2.5
+      });
     }
+
+    // Mark all tiles as loading
+    for (const artist of artists) {
+      setTileLoadingActive(artist.name);
+    }
+
+    // As each artist's personality data resolves, trigger a progressive color update
+    // if tiles are already loaded. This handles the case where iTunes images appear
+    // fast but MB/AudioDB data arrives later — the color starts changing as soon as
+    // the first personality data resolves, even if all tiles are already visible.
+    for (const pPromise of personalityDataPromises) {
+      pPromise.then(() => {
+        tryProgressiveColorUpdate(true);
+      });
+    }
+
+    // Process each artist's image resolution concurrently
+    // Each artist awaits its own pipeline promises (not other artists')
+    await Promise.all(
+      artists.map(async (artist) => {
+        let bestResult = null;
+
+        // Try sources in configured priority order
+        for (const source of CONFIG.imageSources) {
+          if (!sourceNeedsMbData(source)) {
+            // Independent source - await the sequential pipeline promise for this artist
+            const result = await independentImagePromises[artist.name][source];
+            if (result.imageUrl) {
+              bestResult = result;
+              break;
+            }
+          } else {
+            // MB-dependent source - await MB data first, then fetch
+            const mbData = await getMbDataForArtist(artist.name);
+            const result = await fetchImageForSource(artist.name, source, mbData);
+            if (result.imageUrl) {
+              bestResult = result;
+              break;
+            }
+          }
+        }
+
+        if (!bestResult) {
+          bestResult = { source: CONFIG.imageSources[0], imageUrl: null };
+        }
+
+        const tileResult = await prepareTileImage(artist.name, bestResult.imageUrl, bestResult.source);
+
+        // Reveal tile as soon as its image is ready
+        if (tileResult) {
+          revealRow([tileResult]);
+
+          // Track this artist as loaded
+          loadedArtistNames.push(artist.name);
+
+          // Update background color progressively as tiles load.
+          // Skip the final update if personality will set the definitive color.
+          tryProgressiveColorUpdate();
+        }
+      })
+    );
+
+    // Ensure personality analysis completes before we return
+    await personalityPromise;
   }
 
   /**
@@ -1634,12 +1713,6 @@
    */
   async function loadUser(username) {
     const sanitizedUsername = sanitize(username);
-
-    // Cancel any pending personality display from previous user
-    if (personalityDisplayTimeout) {
-      clearTimeout(personalityDisplayTimeout);
-      personalityDisplayTimeout = null;
-    }
 
     // Stop any existing auto-rotation and reset available sources
     stopAutoRotation();

@@ -5,11 +5,7 @@
 
 const express = require('express');
 const config = require('../../config');
-const {
-  validateParam,
-  validateLastfmQuery,
-  isValidUsername
-} = require('../../middleware/security');
+const { validateParam, validateLastfmQuery, isValidUsername } = require('../../middleware/security');
 
 const router = express.Router();
 
@@ -39,6 +35,13 @@ router.get(
       url.searchParams.set('limit', limit);
 
       const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        console.error(`Last.fm topartists API returned ${response.status}: ${text.substring(0, 200)}`);
+        return res.status(502).json({ error: `Last.fm API returned ${response.status}` });
+      }
+
       const data = await response.json();
 
       res.json(data);
@@ -71,6 +74,13 @@ router.get(
       url.searchParams.set('format', 'json');
 
       const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        console.error(`Last.fm userinfo API returned ${response.status}: ${text.substring(0, 200)}`);
+        return res.status(502).json({ error: `Last.fm API returned ${response.status}` });
+      }
+
       const data = await response.json();
 
       res.json(data);

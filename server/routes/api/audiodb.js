@@ -28,6 +28,12 @@ router.get(
         }
       });
 
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        console.error(`TheAudioDB API returned ${response.status}: ${text.substring(0, 200)}`);
+        return res.status(502).json({ error: `TheAudioDB API returned ${response.status}` });
+      }
+
       const data = await response.json();
       res.json(data);
     } catch (error) {
