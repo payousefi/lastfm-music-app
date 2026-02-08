@@ -20,6 +20,8 @@ const INCLUDE = [
   // Server files
   'server',
   'public',
+  'scripts/start.sh',
+  'ecosystem.config.js',
   'package.json',
   'package-lock.json'
 ];
@@ -110,19 +112,14 @@ function copyHtaccess() {
 }
 
 /**
- * Create start script for production
+ * Ensure start.sh is executable in dist
  */
-function createStartScript() {
-  const startScript = `#!/bin/bash
-# Start the music app server
-cd "$(dirname "$0")"
-node server/index.js
-`;
-
-  const startPath = path.join(DIST, 'start.sh');
-  fs.writeFileSync(startPath, startScript);
-  fs.chmodSync(startPath, '755');
-  console.log('  ✓ Created start.sh');
+function ensureStartScriptExecutable() {
+  const startPath = path.join(DIST, 'scripts', 'start.sh');
+  if (fs.existsSync(startPath)) {
+    fs.chmodSync(startPath, '755');
+    console.log('  ✓ scripts/start.sh is executable');
+  }
 }
 
 /**
@@ -151,6 +148,8 @@ function build() {
     if (stat.isDirectory()) {
       copyDir(src, dest);
     } else {
+      // Ensure parent directory exists (for paths like 'scripts/start.sh')
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(src, dest);
     }
     console.log(`  ✓ Copied ${item}`);
@@ -160,7 +159,7 @@ function build() {
   // Create production files
   console.log('Creating production files...');
   createEnvFile();
-  createStartScript();
+  ensureStartScriptExecutable();
   copyHtaccess();
   console.log('');
 
@@ -171,7 +170,8 @@ function build() {
   console.log('  2. Edit .env with your API keys');
   console.log('  3. npm install --production');
   console.log('  4. Upload the "music" folder to your host');
-  console.log('  5. Run: ./start.sh or node server/index.js\n');
+  console.log('  5. Start with PM2:  pm2 start ecosystem.config.js');
+  console.log('     Or directly:     node server/index.js\n');
 }
 
 // Run build
