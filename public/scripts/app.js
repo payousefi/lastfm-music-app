@@ -1388,14 +1388,19 @@
           const loadedHash = hashString(loadedArtistNames.join('|'));
           const progressiveRandom = createSeededRandom(loadedHash);
 
-          // Analyze personality from loaded artists so far
-          const progressiveAnalysis = await analyzePersonality(
-            loadedPersonalityData,
-            progressiveRandom
-          );
+          // Calculate dominant mood locally (no API call needed for background color)
+          const moodCounts = {};
+          for (const d of loadedPersonalityData) {
+            if (d.mood) {
+              const pc = d.playcount || 1;
+              moodCounts[d.mood] = (moodCounts[d.mood] || 0) + pc;
+            }
+          }
+          const dominantMood =
+            Object.entries(moodCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'relaxed';
 
           // Animate to the mood-influenced color
-          animateBackgroundColor(generateRandomColor(progressiveRandom, progressiveAnalysis.mood));
+          animateBackgroundColor(generateRandomColor(progressiveRandom, dominantMood));
         }
       }
     }
