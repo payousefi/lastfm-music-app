@@ -20,7 +20,7 @@
 module.exports = {
   apps: [
     {
-      name: 'lastfm-music-app',
+      name: 'music',
       script: 'scripts/start.sh', // Wrapper that runs npm install if package.json changed
       interpreter: '/bin/bash',
 
