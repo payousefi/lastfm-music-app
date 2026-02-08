@@ -70,7 +70,6 @@ const config = {
 
   // Default app settings
   defaults: {
-    username: 'solitude12',
     artistLimit: 12,
     period: '1month'
   }

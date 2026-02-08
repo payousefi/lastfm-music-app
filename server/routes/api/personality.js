@@ -14,7 +14,7 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
   try {
-    const { username, artists, seed } = req.body;
+    const { artists, seed } = req.body;
 
     if (!artists || !Array.isArray(artists)) {
       return res.status(400).json({ error: 'Missing or invalid artists array' });
