@@ -552,23 +552,21 @@
   };
 
   /**
-   * Generate a random HSL color for the background, optionally influenced by mood
-   * If a seeded random function is provided, uses deterministic randomness
-   * Otherwise uses crypto.getRandomValues for better randomness distribution
-   * Tuned for vivid colors with good white text contrast (WCAG AA)
+   * Generate a blended HSL color from weighted mood proportions.
+   * Instead of picking a single dominant mood (which causes jarring hue jumps),
+   * this blends all mood colors proportionally for smooth transitions.
    * @param {function} [seededRandom] - Optional seeded random function (0-1)
-   * @param {string} [mood] - Optional mood to influence color (happy, sad, angry, relaxed, energetic, dark)
+   * @param {object} moodWeights - Object mapping mood names to their weights (e.g., { sad: 0.4, angry: 0.35 })
+   * @param {number} [confidence=1] - Confidence factor (0-1) for progressive loading dampening
    */
-  function generateRandomColor(seededRandom, mood) {
+  function generateBlendedColor(seededRandom, moodWeights, confidence) {
     let random1, random2, random3;
 
     if (seededRandom) {
-      // Use deterministic seeded random
       random1 = seededRandom();
       random2 = seededRandom();
       random3 = seededRandom();
     } else if (window.crypto && window.crypto.getRandomValues) {
-      // Use crypto API for better randomness
       const arr = new Uint32Array(3);
       window.crypto.getRandomValues(arr);
       random1 = arr[0] / 0xffffffff;
@@ -580,41 +578,118 @@
       random3 = Math.random();
     }
 
-    // Get color ranges based on mood, or use full spectrum if no mood
-    const moodConfig = mood && MOOD_COLORS[mood] ? MOOD_COLORS[mood] : null;
+    // Collect all mood entries with valid configs
+    const entries = Object.entries(moodWeights || {}).filter(([mood]) => MOOD_COLORS[mood]);
 
     let hue, saturation, lightness;
 
-    if (moodConfig) {
-      // Use mood-specific ranges
-      const hueRange = moodConfig.hueMax - moodConfig.hueMin;
-      hue = Math.round(random1 * hueRange + moodConfig.hueMin);
-      // Handle hue wrap-around (e.g., angry mood spans 340-390, which is 340-360 + 0-30)
-      if (hue >= 360) {
-        hue -= 360;
+    if (entries.length > 0) {
+      // Normalize weights to sum to 1
+      const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
+
+      // Weighted average of each mood's center hue, saturation, and lightness
+      // Use circular mean for hue to handle wrap-around (e.g., red 350° + blue 220°)
+      let sinSum = 0,
+        cosSum = 0;
+      let satSum = 0,
+        lightSum = 0;
+
+      for (const [mood, weight] of entries) {
+        const config = MOOD_COLORS[mood];
+        const w = weight / totalWeight;
+
+        // Center of the mood's hue range
+        let centerHue = (config.hueMin + config.hueMax) / 2;
+        if (centerHue >= 360) centerHue -= 360;
+
+        // Circular mean components
+        const rad = (centerHue * Math.PI) / 180;
+        sinSum += Math.sin(rad) * w;
+        cosSum += Math.cos(rad) * w;
+
+        // Weighted average of saturation and lightness midpoints
+        satSum += ((config.satMin + config.satMax) / 2) * w;
+        lightSum += ((config.lightMin + config.lightMax) / 2) * w;
       }
-      saturation = Math.round(
-        random2 * (moodConfig.satMax - moodConfig.satMin) + moodConfig.satMin
-      );
-      lightness = Math.round(
-        random3 * (moodConfig.lightMax - moodConfig.lightMin) + moodConfig.lightMin
-      );
+
+      // Circular mean for hue
+      const meanHue = ((Math.atan2(sinSum, cosSum) * 180) / Math.PI + 360) % 360;
+
+      // Add some randomness within a narrow range around the blended center
+      hue = Math.round(meanHue + (random1 - 0.5) * 30); // ±15° variation
+      if (hue < 0) hue += 360;
+      if (hue >= 360) hue -= 360;
+
+      saturation = Math.round(satSum + (random2 - 0.5) * 15); // ±7.5% variation
+      lightness = Math.round(lightSum + (random3 - 0.5) * 6); // ±3% variation
     } else {
-      // Full spectrum (original behavior)
+      // Full spectrum fallback
       hue = Math.round(random1 * 359);
-      saturation = Math.round(random2 * 35 + 55); // 55-90% (more vivid)
-      lightness = Math.round(random3 * 12 + 20); // 20-32% (dark enough for contrast)
+      saturation = Math.round(random2 * 35 + 55);
+      lightness = Math.round(random3 * 12 + 20);
     }
+
+    // Apply confidence dampening for progressive loading
+    if (typeof confidence === 'number' && confidence < 1) {
+      const eased = confidence * confidence * (3 - 2 * confidence); // smoothstep
+      const mutedSat = 30;
+      saturation = Math.round(mutedSat + (saturation - mutedSat) * eased);
+    }
+
+    // Clamp values
+    saturation = Math.max(20, Math.min(95, saturation));
+    lightness = Math.max(12, Math.min(35, lightness));
 
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   }
 
   /**
-   * Animate background color change
+   * Generate a random HSL color for the background, optionally influenced by mood
+   * If a seeded random function is provided, uses deterministic randomness
+   * Otherwise uses crypto.getRandomValues for better randomness distribution
+   * Tuned for vivid colors with good white text contrast (WCAG AA)
+   * @param {function} [seededRandom] - Optional seeded random function (0-1)
+   * @param {string} [mood] - Optional mood to influence color (happy, sad, angry, relaxed, energetic, dark)
    */
-  function animateBackgroundColor(targetColor) {
-    document.body.style.transition = 'background-color 0.7s ease-out';
-    wrapperEl.style.transition = 'background-color 0.7s ease-out';
+  function generateRandomColor(seededRandom, mood) {
+    // Delegate to blended color with a single mood at 100% weight
+    if (mood && MOOD_COLORS[mood]) {
+      return generateBlendedColor(seededRandom, { [mood]: 1 });
+    }
+
+    // No mood - full spectrum
+    let random1, random2, random3;
+    if (seededRandom) {
+      random1 = seededRandom();
+      random2 = seededRandom();
+      random3 = seededRandom();
+    } else if (window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(3);
+      window.crypto.getRandomValues(arr);
+      random1 = arr[0] / 0xffffffff;
+      random2 = arr[1] / 0xffffffff;
+      random3 = arr[2] / 0xffffffff;
+    } else {
+      random1 = Math.random();
+      random2 = Math.random();
+      random3 = Math.random();
+    }
+    const hue = Math.round(random1 * 359);
+    const saturation = Math.round(random2 * 35 + 55);
+    const lightness = Math.round(random3 * 12 + 20);
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  }
+
+  /**
+   * Animate background color change
+   * @param {string} targetColor - HSL color string
+   * @param {object} [options] - Animation options
+   * @param {number} [options.duration=0.7] - Transition duration in seconds
+   */
+  function animateBackgroundColor(targetColor, options = {}) {
+    const duration = options.duration || 0.7;
+    document.body.style.transition = `background-color ${duration}s ease-out`;
+    wrapperEl.style.transition = `background-color ${duration}s ease-out`;
     document.body.style.backgroundColor = targetColor;
     wrapperEl.style.backgroundColor = targetColor;
 
@@ -1334,11 +1409,34 @@
     // Analyze and display personality (with minimum delay for animation effect)
     const validData = personalityData.filter((d) => d.genre || d.style || d.mood);
     if (validData.length > 0) {
+      // Calculate mood weights client-side (used for background color)
+      // This is separate from the AI headline - background color is always local
+      // Uses proportional weights for smooth blended colors instead of a single dominant mood
+      const finalMoodCounts = {};
+      let finalMoodTotal = 0;
+      for (const d of validData) {
+        if (d.mood) {
+          const pc = d.playcount || 1;
+          finalMoodCounts[d.mood] = (finalMoodCounts[d.mood] || 0) + pc;
+          finalMoodTotal += pc;
+        }
+      }
+      // Build normalized mood weights (e.g., { sad: 0.4, angry: 0.35, relaxed: 0.25 })
+      const finalMoodWeights = {};
+      if (finalMoodTotal > 0) {
+        for (const [mood, count] of Object.entries(finalMoodCounts)) {
+          finalMoodWeights[mood] = count / finalMoodTotal;
+        }
+      } else {
+        finalMoodWeights['relaxed'] = 1;
+      }
+
       // Create seeded random for deterministic headline generation
       // Use a different offset from the seed to get different values than color
       const headlineRandom = currentPersonalitySeed
         ? createSeededRandom(currentPersonalitySeed + 1000)
         : null;
+      // Only the headline comes from the AI API
       const analysis = await analyzePersonality(validData, headlineRandom);
       // Add a variable delay (2.5-4s) so the rolling text animation plays
       // Variable timing feels more organic, like the app is actually "thinking"
@@ -1347,11 +1445,11 @@
       personalityDisplayTimeout = setTimeout(() => {
         displayPersonality(analysis.headline);
         // Animate background to mood-influenced color when personality is revealed
-        // Use a fresh seeded random for the color (different offset than headline)
+        // Uses client-side mood calculation (same as progressive) for consistency
         const colorRandom = currentPersonalitySeed
           ? createSeededRandom(currentPersonalitySeed + 2000)
           : null;
-        animateBackgroundColor(generateRandomColor(colorRandom, analysis.mood));
+        animateBackgroundColor(generateBlendedColor(colorRandom, finalMoodWeights));
       }, thinkingDelay);
     }
 
@@ -1377,30 +1475,54 @@
         // Track this artist as loaded
         loadedArtistNames.push(artist.name);
 
-        // Update background color based on personality data from loaded artists so far
-        const loadedPersonalityData = personalityData.filter(
-          (d) => loadedArtistNames.includes(d.name) && (d.genre || d.style || d.mood)
-        );
+        // Update background color progressively, but only every 3rd artist
+        // to avoid rapid color flipping. Uses a slow 2.5s transition for smooth blending.
+        if (
+          loadedArtistNames.length % 3 === 1 ||
+          loadedArtistNames.length === shuffledArtists.length
+        ) {
+          const loadedPersonalityData = personalityData.filter(
+            (d) => loadedArtistNames.includes(d.name) && (d.genre || d.style || d.mood)
+          );
 
-        if (loadedPersonalityData.length > 0) {
-          // Create a seeded random based on current loaded artists for some consistency
-          // Use a hash of loaded artist names to get deterministic but evolving colors
-          const loadedHash = hashString(loadedArtistNames.join('|'));
-          const progressiveRandom = createSeededRandom(loadedHash);
+          if (loadedPersonalityData.length > 0) {
+            // Create a seeded random based on current loaded artists for some consistency
+            // Use a hash of loaded artist names to get deterministic but evolving colors
+            const loadedHash = hashString(loadedArtistNames.join('|'));
+            const progressiveRandom = createSeededRandom(loadedHash);
 
-          // Calculate dominant mood locally (no API call needed for background color)
-          const moodCounts = {};
-          for (const d of loadedPersonalityData) {
-            if (d.mood) {
-              const pc = d.playcount || 1;
-              moodCounts[d.mood] = (moodCounts[d.mood] || 0) + pc;
+            // Calculate mood weights locally (no API call needed for background color)
+            // Uses proportional weights for blended colors instead of single dominant mood
+            const moodCounts = {};
+            let moodTotal = 0;
+            for (const d of loadedPersonalityData) {
+              if (d.mood) {
+                const pc = d.playcount || 1;
+                moodCounts[d.mood] = (moodCounts[d.mood] || 0) + pc;
+                moodTotal += pc;
+              }
             }
-          }
-          const dominantMood =
-            Object.entries(moodCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'relaxed';
+            // Build normalized mood weights (e.g., { sad: 0.5, angry: 0.3, relaxed: 0.2 })
+            const moodWeights = {};
+            if (moodTotal > 0) {
+              for (const [mood, count] of Object.entries(moodCounts)) {
+                moodWeights[mood] = count / moodTotal;
+              }
+            } else {
+              moodWeights['relaxed'] = 1;
+            }
 
-          // Animate to the mood-influenced color
-          animateBackgroundColor(generateRandomColor(progressiveRandom, dominantMood));
+            // Confidence factor: how much of the data we've seen (0.0 to 1.0)
+            // Early artists produce muted colors; converges to full saturation as more load
+            const confidence = loadedArtistNames.length / shuffledArtists.length;
+
+            // Slow transition for progressive updates (converges toward final color)
+            // Uses blended mood weights so color shifts gradually instead of jumping
+            animateBackgroundColor(
+              generateBlendedColor(progressiveRandom, moodWeights, confidence),
+              { duration: 2.5 }
+            );
+          }
         }
       }
     }

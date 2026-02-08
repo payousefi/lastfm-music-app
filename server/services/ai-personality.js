@@ -59,6 +59,7 @@ The headline should:
 - Can be any style: noun phrase, metaphorical, mood-first, or creative, but should still be understandable and not too cryptic
 - Capture the essence of their musical taste
 - Be memorable and shareable
+- Use Title Case: capitalize major words but keep minor words (a, an, the, and, but, or, for, nor, in, on, at, to, of, with) lowercase unless they start the headline
 - MUST be 35 characters or fewer
 
 Return ONLY the headline text, nothing else. No quotes, no explanation.`;
