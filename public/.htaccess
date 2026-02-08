@@ -1,0 +1,24 @@
+# Apache Reverse Proxy to Node.js
+# This requires mod_proxy to be enabled on your server
+# If you get a 500 error, contact your host to enable mod_proxy
+
+# Disable DirectoryIndex to prevent Apache from appending index.php
+DirectoryIndex disabled
+
+RewriteEngine On
+RewriteBase /
+
+# Proxy ALL requests to Node.js app on port 3000
+# Node.js handles everything including static files
+RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
+
+# If mod_proxy isn't available, the above won't work
+# Alternative: serve static files directly, proxy only dynamic routes
+# (Uncomment below if needed)
+
+# # Serve static files directly
+# RewriteCond %{REQUEST_URI} ^/(stylesheets|img|scripts|favicon\.ico) [NC]
+# RewriteRule ^ - [L]
+#
+# # Proxy everything else to Node.js
+# RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]

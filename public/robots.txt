@@ -17,3 +17,6 @@ Disallow: /node_modules/
 # Allow static assets (CSS, images)
 Allow: /stylesheets/
 Allow: /img/
+
+# Sitemap (optional - add if you create one)
+# Sitemap: https://music.payamyousefi.com/sitemap.xml

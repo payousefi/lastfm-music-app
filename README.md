@@ -42,13 +42,51 @@ A web app that displays your Last.fm top artists in a beautiful tiled layout. En
   - History API for SPA navigation
   - WCAG accessibility improvements
   - Music Personality feature with dynamic headline generation
+  - **Node.js migration** — Replaced PHP with Express.js server
+  - Server-side personality generation (logic now private)
+  - API proxies to hide API keys from client
 
 ## Stack
 
-- PHP (minimal, for SEO)
-- Vanilla JavaScript
+- **Node.js** with Express.js
+- Vanilla JavaScript (frontend)
 - CSS3
 - APIs: Last.fm, MusicBrainz, Discogs, TheAudioDB, iTunes
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Build for production
+npm run build
+```
+
+## Deployment
+
+1. Run `npm run build` to create `dist/music/` folder
+2. Upload contents of `dist/music/` to your server
+3. Edit `.env` with your API keys
+4. Run `npm install --production`
+5. Start with `node server/index.js` or use PM2
+
+For Apache hosting, the included `.htaccess` configures reverse proxy to Node.js on port 3000.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
+
+```bash
+PORT=3000
+NODE_ENV=production
+LASTFM_API_KEY=your_key
+DISCOGS_KEY=your_key
+DISCOGS_SECRET=your_secret
+```
 
 ## API Licensing
 
