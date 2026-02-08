@@ -21,8 +21,7 @@ const INCLUDE = [
   'server',
   'public',
   'package.json',
-  'package-lock.json',
-  'robots.txt'
+  'package-lock.json'
 ];
 
 // Files to exclude (even if inside included directories)
