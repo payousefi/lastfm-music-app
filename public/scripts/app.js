@@ -1721,6 +1721,10 @@
     autoRotationDirection = 1;
     autoRotationDisabled = false; // Re-enable auto-rotation for new user
 
+    // Reset image sources to default order (iTunes primary) for new user
+    CONFIG.imageSources = [...ORIGINAL_SOURCE_ORDER];
+    renderImageSourceRadios();
+
     updateHeaderSubtitle(username);
     // Wait 1s incase we  error out fast and shouldn't show loading state
     showPersonalityLoadingTimeout = setTimeout(() => showPersonalityLoading(username), 1000);
