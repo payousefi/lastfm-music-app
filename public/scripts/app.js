@@ -108,6 +108,9 @@
   // Also stores MusicBrainz data keyed by "artistName:MB_DATA"
   const imageCache = {};
 
+  // Luminance cache - keyed by "artistName:SOURCE", stores boolean (true = light image)
+  const luminanceCache = {};
+
   // Personality data cache - stores genre/style/mood per artist
   const personalityCache = {};
 
@@ -1199,14 +1202,101 @@
 
   /**
    * Preload an image and return a promise
+   * Returns the Image element for potential canvas analysis
    */
   function preloadImage(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve(url);
+      img.crossOrigin = 'anonymous'; // Enable canvas analysis for CORS-allowed images
+      img.onload = () => resolve(img);
       img.onerror = () => reject();
       img.src = url;
     });
+  }
+
+  /**
+   * Analyze the luminance of the bottom-right region of an image (where .title sits)
+   * Uses an offscreen canvas to sample pixel data
+   * @param {HTMLImageElement} img - Loaded image element
+   * @returns {boolean} true if the region is "light" (needs dark title), false if "dark"
+   */
+  function isImageLight(img) {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Use a small sample size for performance (scale down to 50x50)
+      const sampleSize = 50;
+      canvas.width = sampleSize;
+      canvas.height = sampleSize;
+
+      ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+
+      // Sample the bottom-right quadrant (where .title overlay sits)
+      // Title is positioned: bottom: 0, right: 0, left: auto
+      // So sample roughly the bottom 40%, right 70% of the image
+      const startX = Math.floor(sampleSize * 0.3);
+      const startY = Math.floor(sampleSize * 0.6);
+      const regionW = sampleSize - startX;
+      const regionH = sampleSize - startY;
+
+      const imageData = ctx.getImageData(startX, startY, regionW, regionH);
+      const data = imageData.data;
+
+      // Calculate average luminance using WCAG relative luminance formula
+      let totalLuminance = 0;
+      const pixelCount = data.length / 4;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] / 255;
+        const g = data[i + 1] / 255;
+        const b = data[i + 2] / 255;
+
+        // Simplified relative luminance (skip gamma for performance)
+        totalLuminance += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      }
+
+      const avgLuminance = totalLuminance / pixelCount;
+
+      // Threshold: luminance > 0.5 means the region is "light"
+      // White text on light backgrounds needs dark backdrop
+      return avgLuminance > 0.5;
+    } catch (e) {
+      // Canvas tainted by CORS or other error — default to dark (current behavior)
+      return false;
+    }
+  }
+
+  /**
+   * Analyze and cache whether a tile's image is light or dark
+   * Applies 'light-image' class to tiles with bright images
+   * @param {HTMLImageElement} img - The loaded image element
+   * @param {string} artistName - Artist name for cache key
+   * @param {string} source - Image source for cache key
+   */
+  function cacheTileLuminance(img, artistName, source) {
+    const cacheKey = `${artistName}:${source}`;
+    if (luminanceCache[cacheKey] === undefined) {
+      luminanceCache[cacheKey] = isImageLight(img);
+    }
+  }
+
+  /**
+   * Apply the correct title theme (light or dark backdrop) to a tile
+   * based on the currently visible source layer's luminance
+   * @param {Element} tile - The tile element
+   * @param {string} source - The currently active source
+   */
+  function applyTitleTheme(tile, source) {
+    const artistName = tile.dataset.artist;
+    const cacheKey = `${artistName}:${source}`;
+    const isLight = luminanceCache[cacheKey];
+
+    if (isLight) {
+      tile.classList.add('light-image');
+    } else {
+      tile.classList.remove('light-image');
+    }
   }
 
   /**
@@ -1272,9 +1362,11 @@
       if (tile.dataset.artist === artistName) {
         if (imageUrl) {
           try {
-            await preloadImage(imageUrl);
+            const img = await preloadImage(imageUrl);
             // Set image on the source layer
             setSourceLayerImage(tile, source, imageUrl);
+            // Analyze luminance for adaptive title theming
+            cacheTileLuminance(img, artistName, source);
             return { tile, success: true, source };
           } catch (e) {
             return { tile, success: false, source };
@@ -1317,8 +1409,11 @@
     if (bestSource) {
       showSourceLayer(tile, bestSource);
       tile.classList.add('image-loaded');
+      // Apply adaptive title theme based on image luminance
+      applyTitleTheme(tile, bestSource);
     } else {
       tile.classList.add('no-image');
+      tile.classList.remove('light-image');
     }
   }
 
@@ -1738,8 +1833,10 @@
           const tile = Array.from(tiles).find((t) => t.dataset.artist === artist.name);
           if (tile) {
             try {
-              await preloadImage(imageUrl);
+              const img = await preloadImage(imageUrl);
               setSourceLayerImage(tile, source, imageUrl);
+              // Cache luminance for this source so rotation can apply correct theme
+              cacheTileLuminance(img, artist.name, source);
             } catch (e) {
               // Silently fail - this is background prefetch
             }
@@ -1960,6 +2057,8 @@
         showSourceLayer(tile, bestSource);
         tile.classList.remove('no-image');
         tile.classList.add('image-loaded');
+        // Re-apply title theme for the new source's luminance
+        applyTitleTheme(tile, bestSource);
       }
     }
   }
@@ -2002,6 +2101,7 @@
               showSourceLayer(tile, bestSource);
               tile.classList.remove('loading-image', 'loading-active', 'no-image');
               tile.classList.add('image-loaded');
+              applyTitleTheme(tile, bestSource);
             }
           }
         }
@@ -2064,6 +2164,7 @@
           showSourceLayer(tile, bestSource);
           tile.classList.remove('no-image', 'loading-image', 'loading-active');
           tile.classList.add('image-loaded');
+          applyTitleTheme(tile, bestSource);
         } else if (!sourceFullyLoaded) {
           // Source is still loading - show loading state
           showSourceLayer(tile, null);
@@ -2072,7 +2173,7 @@
         } else {
           // Source is fully loaded but has no image - show no-image state
           showSourceLayer(tile, null);
-          tile.classList.remove('image-loaded', 'loading-image', 'loading-active');
+          tile.classList.remove('image-loaded', 'loading-image', 'loading-active', 'light-image');
           tile.classList.add('no-image');
         }
       }
