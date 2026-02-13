@@ -102,7 +102,7 @@
   };
 
   // DOM Elements
-  let wrapperEl, contentEl, usernameInput, headerSubtitle, personalityEl;
+  let wrapperEl, contentEl, usernameInput, headerSubtitle, personalityEl, srAnnouncerEl, usernameErrorEl;
 
   // Image cache - keyed by "artistName:SOURCE" for per-source caching
   // Also stores MusicBrainz data keyed by "artistName:MB_DATA"
@@ -284,6 +284,18 @@
   /**
    * Show the personality loading state with rolling text animation
    */
+  /**
+   * Announce a message to screen readers via the dedicated live region.
+   * Clears then sets text with a small delay to ensure the announcement fires.
+   */
+  function announceToScreenReader(message) {
+    if (!srAnnouncerEl) return;
+    srAnnouncerEl.textContent = '';
+    setTimeout(() => {
+      srAnnouncerEl.textContent = message;
+    }, 100);
+  }
+
   function showPersonalityLoading(username) {
     if (!personalityEl) return;
 
@@ -297,10 +309,14 @@
     const isDefault = username === CONFIG.defaultUsername;
     const whosText = isDefault ? 'My' : `${sanitize(username)}'s`;
 
-    personalityEl.innerHTML = `<span class="personality-label">${whosText} Music Personality</span><span class="personality-content"><span class="personality-rolling"></span><span class="personality-text"></span></span>`;
+    // Rolling text has aria-hidden="true" so screen readers ignore the rapid updates
+    personalityEl.innerHTML = `<span class="personality-label">${whosText} Music Personality</span><span class="personality-content"><span class="personality-rolling" aria-hidden="true"></span><span class="personality-text"></span></span>`;
     personalityEl.style.display = 'block';
     personalityEl.classList.remove('visible');
     personalityEl.classList.add('loading');
+
+    // Announce loading state once via dedicated announcer (not the live region)
+    announceToScreenReader(`Loading ${whosText} music personality`);
 
     // Start rolling text animation with variable timing (feels more organic)
     const rollingEl = personalityEl.querySelector('.personality-rolling');
@@ -345,12 +361,16 @@
         textEl.textContent = headline;
       } else {
         // Fallback if structure doesn't exist
-        personalityEl.innerHTML = `<span class="personality-label">Your Music Personality</span><span class="personality-content"><span class="personality-rolling"></span><span class="personality-text">${sanitize(headline)}</span></span>`;
+        personalityEl.innerHTML = `<span class="personality-label">Your Music Personality</span><span class="personality-content"><span class="personality-rolling" aria-hidden="true"></span><span class="personality-text">${sanitize(headline)}</span></span>`;
       }
 
-      // Transition from loading to visible
+      // Transition from loading to visible — enable live region for the final headline
+      personalityEl.setAttribute('aria-live', 'polite');
       personalityEl.classList.remove('loading');
       personalityEl.classList.add('visible');
+
+      // Announce the headline via the dedicated announcer
+      announceToScreenReader(`Your music personality: ${headline}`);
 
       // On mobile viewports, smoothly scroll to the main content area
       // so the personality headline is visible after it fades in
@@ -386,6 +406,8 @@
       personalityAnimationTimeout = null;
     }
 
+    // Disable live region before hiding to prevent stale announcements
+    personalityEl.setAttribute('aria-live', 'off');
     personalityEl.classList.remove('visible', 'loading');
     personalityEl.style.display = 'none';
   }
@@ -1609,7 +1631,15 @@
    * Render error state
    */
   function renderError(message) {
-    contentEl.innerHTML = `<div class="error-state"><p><em>${sanitize(message)}</em></p></div>`;
+    contentEl.setAttribute('aria-busy', 'true');
+    contentEl.innerHTML = `<div class="error-state" role="alert"><p><em>${sanitize(message)}</em></p></div>`;
+    contentEl.removeAttribute('aria-busy');
+
+    // Also update the error container linked to the username input
+    if (usernameErrorEl) {
+      usernameErrorEl.textContent = message;
+    }
+
     slideDown(contentEl);
   }
 
@@ -1641,13 +1671,27 @@
         return `<div class="source-layer${isActive}" data-source="${source}"></div>`;
       }).join('');
 
-      // Accessible link with descriptive aria-label
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="${safeName}, ${playcount} ${playsText} this month"><div class="artist loading-image" data-artist="${safeName}" role="img" aria-label="${safeName}">${sourceLayers}<div class="dark" aria-hidden="true"></div><div class="title">${safeName}<span>${playcount} ${playsText}</span></div></div></a>`;
+      // Accessible link with descriptive aria-label; inner content is presentational
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="${safeName}, ${playcount} ${playsText} this month"><div class="artist loading-image" data-artist="${safeName}" role="presentation">${sourceLayers}<div class="dark" aria-hidden="true"></div><div class="title" aria-hidden="true">${safeName}<span>${playcount} ${playsText}</span></div></div></a>`;
     });
 
-    // Add heading for screen readers
-    contentEl.innerHTML = `<h2 class="visually-hidden">Top ${artists.length} artists this month</h2>` + tiles.join('');
+    // Add heading for screen readers; suppress live region during bulk DOM update
+    contentEl.setAttribute('aria-busy', 'true');
+    contentEl.innerHTML =
+      `<h2 class="visually-hidden" tabindex="-1">Top ${artists.length} artists this month</h2>` + tiles.join('');
+
+    // Clear any previous error state
+    if (usernameErrorEl) {
+      usernameErrorEl.textContent = '';
+    }
+
     slideDown(contentEl, 1000);
+
+    // Re-enable live region after slide animation completes and announce summary
+    setTimeout(() => {
+      contentEl.removeAttribute('aria-busy');
+      announceToScreenReader(`Loaded top ${artists.length} artists for ${sanitize(username)}`);
+    }, 1100);
 
     fetchAllArtistImages(artists).then(() => {
       // Mark primary source as available for rotation
@@ -1775,13 +1819,18 @@
    */
   function handleUsernameSubmit(event) {
     if (event.key === 'Enter') {
+      event.preventDefault(); // Prevent native form submission
       const inputVal = usernameInput.value.trim();
       if (inputVal) {
         const newUrl = '/' + encodeURIComponent(inputVal);
         window.history.pushState({ username: inputVal }, '', newUrl);
-        // contentEl.style.display = 'none';
-        // contentEl.innerHTML = '';
-        loadUser(inputVal);
+        loadUser(inputVal).then(() => {
+          // Move focus to the results heading after content loads
+          const heading = contentEl.querySelector('h2');
+          if (heading) {
+            heading.focus();
+          }
+        });
         usernameInput.blur();
       }
     }
@@ -1792,9 +1841,13 @@
    */
   function handlePopState() {
     const username = getUsernameFromPath();
-    // contentEl.style.display = 'none';
-    // contentEl.innerHTML = '';
-    loadUser(username);
+    loadUser(username).then(() => {
+      // Move focus to the results heading after content loads
+      const heading = contentEl.querySelector('h2');
+      if (heading) {
+        heading.focus();
+      }
+    });
   }
 
   // Display names for image sources
@@ -1854,6 +1907,11 @@
   function startAutoRotation() {
     // Don't start if already running or less than 2 sources available
     if (autoRotationInterval || availableSources.length < 2) return;
+
+    // Respect prefers-reduced-motion: skip auto-rotation entirely
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
 
     // Start at the first source
     autoRotationSourceIndex = 0;
@@ -2030,6 +2088,8 @@
     usernameInput = document.getElementById('lastfm-username');
     headerSubtitle = document.querySelector('header h2');
     personalityEl = document.querySelector('.music-personality');
+    srAnnouncerEl = document.getElementById('sr-announcer');
+    usernameErrorEl = document.getElementById('username-error');
 
     if (!wrapperEl || !contentEl) {
       console.error('Required DOM elements not found');
@@ -2044,7 +2104,7 @@
     loadUser(username);
 
     if (usernameInput) {
-      usernameInput.addEventListener('keypress', handleUsernameSubmit);
+      usernameInput.addEventListener('keydown', handleUsernameSubmit);
     }
 
     window.addEventListener('popstate', handlePopState);

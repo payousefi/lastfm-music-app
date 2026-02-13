@@ -26,10 +26,13 @@
   </head>
 
   <body>
+    <!-- Skip navigation link for keyboard users -->
+    <a href="#main-content" class="visually-hidden skip-link">Skip to main content</a>
+
     <!-- main wrapper -->
     <div id="wrap">
       <header>
-        <h1><a href="/">&#8220;What kind of music do you like?&#8221;</a></h1>
+        <h1><a href="/" aria-label="Music app — home">&#8220;What kind of music do you like?&#8221;</a></h1>
         <h2>
           Curious about {{whos}} taste in music in the last month?
           <br />
@@ -38,12 +41,12 @@
 
       <hr aria-hidden="true" />
 
-      <div class="username-section">
+      <form class="username-section" role="search" aria-label="Look up a Last.fm user" action="javascript:void(0)">
         <p>
           Have your own
           <a href="https://last.fm/" target="_blank" rel="noopener noreferrer">last.fm</a>
           account?
-          <label for="lastfm-username" class="visually-hidden">Enter your Last.fm username</label>
+          <label for="lastfm-username" class="visually-hidden">Enter your Last.fm username and press Enter</label>
           <span aria-hidden="true">Type in your</span>
           <input
             type="text"
@@ -54,18 +57,24 @@
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-            aria-label="Last.fm username"
             placeholder="username"
+            aria-describedby="username-error"
           />
           <span aria-hidden="true">and press enter.</span>
         </p>
-      </div>
+      </form>
 
       <!-- Main content area with ARIA live region for dynamic updates -->
-      <main role="main">
-        <p class="music-personality" aria-live="polite"></p>
+      <main id="main-content">
+        <p class="music-personality" aria-live="off"></p>
         <div class="content" aria-live="polite" aria-atomic="false"></div>
       </main>
+
+      <!-- Dedicated screen reader announcer for status messages -->
+      <div id="sr-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
+      <!-- Error message container linked to username input -->
+      <div id="username-error" class="visually-hidden" role="alert" aria-live="assertive"></div>
 
       <footer>
         <div class="image-sources-config" role="radiogroup" aria-label="Primary image source"></div>
