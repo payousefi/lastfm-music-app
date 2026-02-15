@@ -29,6 +29,30 @@ router.get(
       });
 
       if (!response.ok) {
+        // Forward 429 rate-limit responses so the client can respect retryAfter
+        if (response.status === 429) {
+          let retryAfter = 60; // default fallback
+          try {
+            const body = await response.json();
+            if (body.retryAfter) {
+              retryAfter = body.retryAfter;
+            }
+          } catch (_) {
+            // Use default retryAfter
+          }
+          // Also check the standard Retry-After header
+          const headerRetry = response.headers.get('Retry-After');
+          if (headerRetry) {
+            retryAfter = parseInt(headerRetry, 10) || retryAfter;
+          }
+          console.warn(`TheAudioDB rate limited — retryAfter: ${retryAfter}s`);
+          return res.status(429).json({
+            error: 'Too many requests',
+            message: 'TheAudioDB rate limit exceeded. Please try again later.',
+            retryAfter
+          });
+        }
+
         const text = await response.text().catch(() => '');
         console.error(`TheAudioDB API returned ${response.status}: ${text.substring(0, 200)}`);
         return res.status(502).json({ error: `TheAudioDB API returned ${response.status}` });

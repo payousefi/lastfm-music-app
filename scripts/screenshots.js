@@ -332,6 +332,13 @@ async function captureUserViewport(page, user, viewport) {
         const files = await captureUserViewport(page, user, viewport);
         allFiles[key].push(...files);
       }
+
+      // Pause between users to avoid hitting API rate limits (e.g. TheAudioDB 429)
+      // Each user load triggers ~12 AudioDB requests for personality data
+      if (usernames.indexOf(user) < usernames.length - 1) {
+        console.log('\n⏸️  Pausing 30s between users to respect API rate limits…');
+        await new Promise((resolve) => setTimeout(resolve, 30000));
+      }
     }
 
     const totalFiles = allFiles.desktop.length + allFiles.mobile.length;

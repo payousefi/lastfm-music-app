@@ -976,18 +976,36 @@
   /**
    * Fetch artist data from TheAudioDB using MBID
    * Returns image URL and genre/style/mood for personality analysis
+   * Respects 429 rate limits by waiting retryAfter seconds and retrying once
    */
   async function fetchAudioDBData(mbid) {
+    const empty = { image: null, genre: null, style: null, mood: null };
     if (!mbid) {
-      return { image: null, genre: null, style: null, mood: null };
+      return empty;
     }
 
     try {
       const url = `/api/audiodb/artist/${mbid}`;
-      const response = await fetch(url);
+      let response = await fetch(url);
+
+      // Handle rate limiting — wait retryAfter seconds and retry once
+      if (response.status === 429) {
+        let retryAfter = 60; // default fallback
+        try {
+          const body = await response.json();
+          if (body.retryAfter) {
+            retryAfter = body.retryAfter;
+          }
+        } catch (_) {
+          // Use default
+        }
+        console.warn(`TheAudioDB rate limited — waiting ${retryAfter}s before retry`);
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        response = await fetch(url);
+      }
 
       if (!response.ok) {
-        return { image: null, genre: null, style: null, mood: null };
+        return empty;
       }
 
       const data = await response.json();
@@ -1002,9 +1020,9 @@
         };
       }
 
-      return { image: null, genre: null, style: null, mood: null };
+      return empty;
     } catch (error) {
-      return { image: null, genre: null, style: null, mood: null };
+      return empty;
     }
   }
 
