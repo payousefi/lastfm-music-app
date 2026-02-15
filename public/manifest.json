@@ -4,7 +4,7 @@
   "description": "Discover your music personality through your Last.fm listening history.",
   "start_url": "/",
   "id": "/",
-  "display": "minimal-ui",
+  "display": "browser",
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "any",
