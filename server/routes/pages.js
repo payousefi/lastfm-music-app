@@ -35,9 +35,17 @@ function escapeHtml(str) {
 /**
  * GET /:username?
  * Serve main page with dynamic meta tags
+ *
+ * Guard: requests with file extensions (e.g. /favicon.ico, /apple-touch-icon.png)
+ * that weren't matched by express.static should 404, not render as a "username".
  */
-router.get('/:username?', (req, res) => {
+router.get('/:username?', (req, res, next) => {
   const username = req.params.username || '';
+
+  // If the path looks like a file request, let it 404 naturally
+  if (username && /\.\w{2,5}$/.test(username)) {
+    return next();
+  }
   const escapedUsername = escapeHtml(username);
 
   let title, whos, description;
