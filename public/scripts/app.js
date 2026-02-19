@@ -1225,9 +1225,30 @@
   function preloadImage(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous'; // Enable canvas analysis for CORS-allowed images
+      // crossOrigin is intentionally NOT set here.
+      // Setting crossOrigin='anonymous' sends an Origin header to CDNs like
+      // i.discogs.com and r2.theaudiodb.com. Those CDNs don't respond with
+      // Access-Control-Allow-Origin, so the browser blocks the load entirely.
+      // Canvas luminance analysis uses a separate CORS-mode load (see
+      // cacheTileLuminance) so display and analysis are decoupled.
       img.onload = () => resolve(img);
       img.onerror = () => reject();
+      img.src = url;
+    });
+  }
+
+  /**
+   * Load an image in CORS mode for canvas pixel analysis.
+   * Returns a Promise<HTMLImageElement> if the CDN supports CORS, or null if not.
+   * This is separate from preloadImage so that display (no CORS) and canvas
+   * analysis (needs CORS) use independent image loads.
+   */
+  function loadImageForCanvas(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null); // CDN doesn't support CORS — resolve null, don't reject
       img.src = url;
     });
   }
@@ -1286,16 +1307,27 @@
   }
 
   /**
-   * Analyze and cache whether a tile's image is light or dark
-   * Applies 'light-image' class to tiles with bright images
-   * @param {HTMLImageElement} img - The loaded image element
+   * Analyze and cache whether a tile's image is light or dark.
+   * Canvas pixel analysis requires CORS-mode image loading. Only iTunes/Apple CDN
+   * supports CORS for arbitrary origins — Discogs (i.discogs.com) and TheAudioDB
+   * (r2.theaudiodb.com) do not. Attempting a CORS-mode load against those CDNs
+   * produces browser console errors even though the display image loads fine.
+   * For non-CORS sources we skip analysis and default to false (dark).
+   * @param {string} imageUrl - The image URL to analyze
    * @param {string} artistName - Artist name for cache key
-   * @param {string} source - Image source for cache key
+   * @param {string} source - Image source identifier (ITUNES, DISCOGS, THE_AUDIO_DB)
    */
-  function cacheTileLuminance(img, artistName, source) {
+  async function cacheTileLuminance(imageUrl, artistName, source) {
     const cacheKey = `${artistName}:${source}`;
     if (luminanceCache[cacheKey] === undefined) {
-      luminanceCache[cacheKey] = isImageLight(img);
+      // Only iTunes CDN (mzstatic.com) supports CORS — skip canvas analysis for others
+      const supportsCors = source === SERVICES.ITUNES;
+      if (supportsCors) {
+        const corsImg = await loadImageForCanvas(imageUrl);
+        luminanceCache[cacheKey] = corsImg ? isImageLight(corsImg) : false;
+      } else {
+        luminanceCache[cacheKey] = false;
+      }
     }
   }
 
@@ -1380,11 +1412,13 @@
       if (tile.dataset.artist === artistName) {
         if (imageUrl) {
           try {
-            const img = await preloadImage(imageUrl);
+            await preloadImage(imageUrl);
             // Set image on the source layer
             setSourceLayerImage(tile, source, imageUrl);
-            // Analyze luminance for adaptive title theming
-            cacheTileLuminance(img, artistName, source);
+            // Await luminance analysis so the cache is populated before revealTile
+            // calls applyTitleTheme. loadImageForCanvas resolves null (not rejects)
+            // for CDNs that don't support CORS, so this never throws.
+            await cacheTileLuminance(imageUrl, artistName, source);
             return { tile, success: true, source };
           } catch (e) {
             return { tile, success: false, source };
@@ -1851,10 +1885,10 @@
           const tile = Array.from(tiles).find((t) => t.dataset.artist === artist.name);
           if (tile) {
             try {
-              const img = await preloadImage(imageUrl);
+              await preloadImage(imageUrl);
               setSourceLayerImage(tile, source, imageUrl);
               // Cache luminance for this source so rotation can apply correct theme
-              cacheTileLuminance(img, artist.name, source);
+              cacheTileLuminance(imageUrl, artist.name, source);
             } catch (e) {
               // Silently fail - this is background prefetch
             }

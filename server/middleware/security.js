@@ -112,13 +112,6 @@ function createCorsMiddleware() {
         }
       }
 
-      // In production, also allow same-origin requests (some browsers like Safari
-      // send Origin header even for same-origin fetch() calls)
-      const selfOrigin = `http://localhost:${config.port}`;
-      if (origin === selfOrigin) {
-        return callback(null, true);
-      }
-
       callback(new Error(`CORS: Origin ${origin} not allowed`));
     },
     methods: ['GET', 'POST'],
