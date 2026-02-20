@@ -352,7 +352,10 @@ header {
     transition: box-shadow 0.2s ease-out;
 }
 
-/* Inset border overlay - sits on top of source layers */
+/* Inset specular overlay — subtle light edge + soft inner glow (Layer 4)
+   mix-blend-mode: screen lets the underlying image colors tint the glow,
+   so bright/saturated image edges produce a colored specular highlight
+   while dark edges keep the glow subtle and neutral. */
 .artist::before {
     content: "";
     position: absolute;
@@ -361,17 +364,25 @@ header {
     right: 0;
     bottom: 0;
     border-radius: 8px;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-    z-index: 10;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+        inset 0 0 8px 2px rgba(255, 255, 255, 0.07),
+        inset 0 1px 3px 0 rgba(255, 255, 255, 0.12);
+    mix-blend-mode: screen;
+    z-index: 3;
     pointer-events: none;
 }
 
 .artist.loading-image::before,
 .artist.loading-active::before {
-    box-shadow: inset 0 0 0 1px var(--border-specular, rgba(255, 255, 255, 0.1));
+    box-shadow:
+        inset 0 0 0 1px var(--border-specular, rgba(255, 255, 255, 0.12)),
+        inset 0 0 6px 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 2px 0 rgba(255, 255, 255, 0.08);
+    mix-blend-mode: normal;
 }
 
-/* Source layer divs for smooth crossfade transitions between image sources */
+/* Source layer divs for smooth crossfade transitions between image sources (Layers 6-8) */
 .source-layer {
     position: absolute;
     top: 0;
@@ -382,7 +393,7 @@ header {
     background-size: cover;
     opacity: 0;
     transition: opacity 0.8s ease-in-out;
-    z-index: 0;
+    z-index: 1;
     pointer-events: none;
 }
 
@@ -391,7 +402,7 @@ header {
     opacity: 1;
 }
 
-/* Star placeholder base styles */
+/* Star placeholder base styles (Layer 5) */
 .artist.no-image::after,
 .artist.loading-image::after,
 .artist.loading-active::after {
@@ -407,7 +418,7 @@ header {
     background-repeat: no-repeat;
     background-position: center center;
     background-size: 150px 150px;
-    z-index: 1;
+    z-index: 2;
 }
 
 /* Waiting in queue - static, very transparent star */
@@ -440,7 +451,7 @@ header {
     );
 }
 
-/*  Hover effect on artist tiles
+/*  Hover effect on artist tiles (Layer 3)
 ----------------------------------------------------- */
 .artist .dark {
     opacity: 0;
@@ -449,18 +460,23 @@ header {
     right: 0;
     top: 0;
     left: 0;
-    z-index: 1;
+    z-index: 4;
+    border-radius: 8px;
     background: #000;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .artist:hover .dark {
     opacity: 0.35;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 0 8px 2px rgba(0, 0, 0, 0.15);
 }
 
-/*  Boxed title styling
+/*  Boxed title styling (Layers 1-2: title text + backdrop blur)
 ----------------------------------------------------- */
 .title {
-    z-index: 2;
+    z-index: 5;
     position: absolute;
     bottom: 0;
     right: 0;
