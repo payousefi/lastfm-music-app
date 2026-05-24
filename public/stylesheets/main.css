@@ -510,6 +510,12 @@ header {
     border-radius: 4px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     z-index: -1;
+    /* Ease backdrop color/border with the same 0.8s ease-in-out window as
+       .source-layer's opacity crossfade above, so the title theme transition
+       feels cohesive with the underlying image change rather than snapping. */
+    transition:
+        background-color 0.8s ease-in-out,
+        border-color 0.8s ease-in-out;
 }
 
 .title:hover {

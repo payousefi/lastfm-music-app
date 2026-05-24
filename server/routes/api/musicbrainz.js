@@ -6,8 +6,13 @@
 const express = require('express');
 const config = require('../../config');
 const { validateParam, validateMusicbrainzQuery, isValidMBID } = require('../../middleware/security');
+const responseCache = require('../../utils/responseCache');
 
 const router = express.Router();
+
+const SEARCH_TTL_MS = 7 * 24 * 60 * 60 * 1000;   // in-process cache: long, since MB data is ~immutable
+const LOOKUP_TTL_MS = 30 * 24 * 60 * 60 * 1000;  // in-process cache: long, MBID lookups are stable
+const BROWSER_MAX_AGE_S = 60 * 60;               // Cache-Control: short, so we can bust quickly
 
 /**
  * GET /api/musicbrainz/artist
@@ -19,6 +24,13 @@ router.get('/artist', validateMusicbrainzQuery, async (req, res) => {
 
     if (!query) {
       return res.status(400).json({ error: 'Missing query parameter' });
+    }
+
+    const cacheKey = `mb:search:${query}`;
+    const cached = responseCache.get(cacheKey);
+    if (cached) {
+      res.set('Cache-Control', `public, max-age=${BROWSER_MAX_AGE_S}`);
+      return res.json(cached);
     }
 
     const url = new URL(`${config.musicbrainz.baseUrl}/artist`);
@@ -55,6 +67,8 @@ router.get('/artist', validateMusicbrainzQuery, async (req, res) => {
       return res.status(429).json(data);
     }
 
+    responseCache.set(cacheKey, data, SEARCH_TTL_MS);
+    res.set('Cache-Control', `public, max-age=${BROWSER_MAX_AGE_S}`);
     res.json(data);
   } catch (error) {
     console.error('MusicBrainz API error:', error);
@@ -72,6 +86,13 @@ router.get(
   async (req, res) => {
     try {
       const { mbid } = req.params;
+
+      const cacheKey = `mb:lookup:${mbid.toLowerCase()}`;
+      const cached = responseCache.get(cacheKey);
+      if (cached) {
+        res.set('Cache-Control', `public, max-age=${BROWSER_MAX_AGE_S}`);
+        return res.json(cached);
+      }
 
       const url = new URL(`${config.musicbrainz.baseUrl}/artist/${mbid}`);
       url.searchParams.set('fmt', 'json');
@@ -106,6 +127,8 @@ router.get(
         return res.status(429).json(data);
       }
 
+      responseCache.set(cacheKey, data, LOOKUP_TTL_MS);
+      res.set('Cache-Control', `public, max-age=${BROWSER_MAX_AGE_S}`);
       res.json(data);
     } catch (error) {
       console.error('MusicBrainz API error:', error);

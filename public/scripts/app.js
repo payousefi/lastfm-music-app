@@ -111,6 +111,14 @@
   // Luminance cache - keyed by "artistName:SOURCE", stores boolean (true = light image)
   const luminanceCache = {};
 
+  // Hue cache - keyed by "artistName:SOURCE", stores { hue, weight } or null
+  // hue: 0-360, weight: 0-1 (how vivid/representative the dominant hue is)
+  const hueCache = {};
+
+  // Per-artist image hue contribution to the background color blend.
+  // Captured at first reveal so auto-rotation does not churn the background.
+  const tileHueContributions = {};
+
   // Personality data cache - stores genre/style/mood per artist
   const personalityCache = {};
 
@@ -131,6 +139,30 @@
 
   // Current personality seed (for deterministic color/headline generation)
   let currentPersonalitySeed = null;
+
+  // Flip to false to silence personality-reveal timing logs.
+  const DEBUG_PERSONALITY_TIMING = true;
+  let personalityTimingStart = 0;
+  const personalityCallTimings = []; // { artist, api, durationMs }
+  function markPersonalityTiming(label) {
+    if (!DEBUG_PERSONALITY_TIMING) return;
+    const delta = performance.now() - personalityTimingStart;
+    console.log(`[personality timing] ${label} +${delta.toFixed(0)}ms`);
+  }
+  function recordPersonalityCall(artist, api, durationMs) {
+    if (!DEBUG_PERSONALITY_TIMING) return;
+    personalityCallTimings.push({ artist, api, durationMs: Math.round(durationMs) });
+  }
+  function dumpPersonalityCallTimings() {
+    if (!DEBUG_PERSONALITY_TIMING || personalityCallTimings.length === 0) return;
+    const byApi = {};
+    for (const t of personalityCallTimings) {
+      byApi[t.api] = (byApi[t.api] || 0) + t.durationMs;
+    }
+    console.log('[personality timing] per-API totals (ms):', byApi);
+    const sorted = [...personalityCallTimings].sort((a, b) => b.durationMs - a.durationMs);
+    console.table(sorted);
+  }
 
   /**
    * Simple hash function (djb2) for creating deterministic seeds
@@ -189,6 +221,7 @@
    */
   async function analyzePersonality(artistsData, seed) {
     try {
+      markPersonalityTiming('T4 /api/personality POST start');
       const response = await fetch('/api/personality', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,7 +232,9 @@
       });
 
       if (response.ok) {
-        return await response.json();
+        const json = await response.json();
+        markPersonalityTiming('T5 /api/personality response');
+        return json;
       }
     } catch (error) {
       console.error('Personality API error:', error);
@@ -301,6 +336,7 @@
 
   function showPersonalityLoading(username) {
     if (!personalityEl) return;
+    markPersonalityTiming('T2 loading UI shown');
 
     // Clear any existing animation and reset word pool for fresh session
     if (personalityAnimationTimeout) {
@@ -343,6 +379,7 @@
    */
   function displayPersonality(headline) {
     if (!personalityEl || !headline) return;
+    markPersonalityTiming('T6 displayPersonality called');
 
     // Stop the rolling animation
     if (personalityAnimationTimeout) {
@@ -371,6 +408,7 @@
       personalityEl.setAttribute('aria-live', 'polite');
       personalityEl.classList.remove('loading');
       personalityEl.classList.add('visible');
+      markPersonalityTiming('T7 headline visible');
 
       // Announce the headline via the dedicated announcer
       announceToScreenReader(`Your music personality: ${headline}`);
@@ -639,6 +677,12 @@
     return MOOD_NORMALIZE[rawMood.trim().toLowerCase()] || null;
   }
 
+  // Image hues never push the final color outside the mood's natural range.
+  // Even with 12 fully vivid covers all pointing the same direction, the hue
+  // shifts by at most this many degrees.
+  const MAX_IMAGE_HUE_NUDGE_DEG = 20;
+  const VISIBLE_TILE_COUNT = 12;
+
   /**
    * Generate a blended HSL color from weighted mood proportions.
    * Instead of picking a single dominant mood (which causes jarring hue jumps),
@@ -646,8 +690,11 @@
    * @param {function} [seededRandom] - Optional seeded random function (0-1)
    * @param {object} moodWeights - Object mapping mood names to their weights (e.g., { sad: 0.4, angry: 0.35 })
    * @param {number} [confidence=1] - Confidence factor (0-1) for progressive loading dampening
+   * @param {Array<{hue:number,weight:number}>} [imageHues] - Optional dominant hues
+   *   extracted from the visible artist images. Applied as a capped nudge to the
+   *   mood-derived hue (never overpowers mood; only bends the exact shade).
    */
-  function generateBlendedColor(seededRandom, moodWeights, confidence) {
+  function generateBlendedColor(seededRandom, moodWeights, confidence, imageHues) {
     let random1, random2, random3;
 
     if (seededRandom) {
@@ -703,8 +750,35 @@
       // Circular mean for hue
       const meanHue = ((Math.atan2(sinSum, cosSum) * 180) / Math.PI + 360) % 360;
 
+      // Optional image-derived nudge: subtly bend the mood hue toward the
+      // dominant hues of the visible artist images. Capped at ±10° and scaled
+      // by how much of the visible 12-tile set has actually contributed, so
+      // the influence eases in deterministically as tiles reveal.
+      let nudgedMeanHue = meanHue;
+      if (imageHues && imageHues.length > 0) {
+        let iSinSum = 0;
+        let iCosSum = 0;
+        let iWeightSum = 0;
+        for (const { hue: ih, weight: iw } of imageHues) {
+          if (typeof ih !== 'number' || !iw) continue;
+          const rad = (ih * Math.PI) / 180;
+          iSinSum += Math.sin(rad) * iw;
+          iCosSum += Math.cos(rad) * iw;
+          iWeightSum += iw;
+        }
+        if (iWeightSum > 0) {
+          const imageMeanHue = ((Math.atan2(iSinSum, iCosSum) * 180) / Math.PI + 360) % 360;
+          let delta = imageMeanHue - meanHue;
+          while (delta > 180) delta -= 360;
+          while (delta < -180) delta += 360;
+          const imageInfluence = Math.min(1, iWeightSum / VISIBLE_TILE_COUNT);
+          const capped = Math.max(-MAX_IMAGE_HUE_NUDGE_DEG, Math.min(MAX_IMAGE_HUE_NUDGE_DEG, delta));
+          nudgedMeanHue = (meanHue + capped * imageInfluence + 360) % 360;
+        }
+      }
+
       // Add some randomness within a narrow range around the blended center
-      hue = Math.round(meanHue + (random1 - 0.5) * 30); // ±15° variation
+      hue = Math.round(nudgedMeanHue + (random1 - 0.5) * 30); // ±15° variation
       if (hue < 0) hue += 360;
       if (hue >= 360) hue -= 360;
 
@@ -1359,12 +1433,75 @@
   }
 
   /**
-   * Analyze and cache whether a tile's image is light or dark.
-   * Canvas pixel analysis requires CORS-mode image loading. Only iTunes/Apple CDN
-   * supports CORS for arbitrary origins — Discogs (i.discogs.com) and TheAudioDB
-   * (r2.theaudiodb.com) do not. Attempting a CORS-mode load against those CDNs
-   * produces browser console errors even though the display image loads fine.
-   * For non-CORS sources we skip analysis and default to false (dark).
+   * Extract a dominant hue from an image using a weighted circular mean of
+   * saturated, mid-tone pixels. Achromatic, near-black, and near-white pixels
+   * are skipped so a mostly-gray cover doesn't muddy the result.
+   * @param {HTMLImageElement} img - Loaded image element
+   * @returns {{ hue: number, weight: number } | null}
+   *   hue: 0-360, weight: 0-1 representing how vivid/representative the hue is
+   *   Returns null when the image is effectively colorless or canvas is tainted.
+   */
+  function extractTileHue(img) {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const sampleSize = 50;
+      canvas.width = sampleSize;
+      canvas.height = sampleSize;
+      ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+      const { data } = ctx.getImageData(0, 0, sampleSize, sampleSize);
+
+      const totalPixels = data.length / 4;
+      let sinSum = 0;
+      let cosSum = 0;
+      let weightSum = 0;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] / 255;
+        const g = data[i + 1] / 255;
+        const b = data[i + 2] / 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const lightness = (max + min) / 2;
+        const delta = max - min;
+        if (delta === 0) continue; // achromatic
+        if (lightness < 0.15 || lightness > 0.9) continue; // too dark/light to carry hue
+        const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+        if (saturation < 0.18) continue; // too desaturated
+
+        let h;
+        if (max === r) h = ((g - b) / delta) % 6;
+        else if (max === g) h = (b - r) / delta + 2;
+        else h = (r - g) / delta + 4;
+        h *= 60;
+        if (h < 0) h += 360;
+
+        // Weight vivid mid-tone pixels most; dim pixels contribute less.
+        const pixelWeight = saturation * (1 - Math.abs(lightness - 0.5) * 2);
+        const rad = (h * Math.PI) / 180;
+        sinSum += Math.sin(rad) * pixelWeight;
+        cosSum += Math.cos(rad) * pixelWeight;
+        weightSum += pixelWeight;
+      }
+
+      if (weightSum <= 0) return null;
+      // Normalize so a moderately colorful cover lands near weight 1.
+      const meanWeight = weightSum / totalPixels;
+      if (meanWeight < 0.03) return null;
+      const hue = ((Math.atan2(sinSum, cosSum) * 180) / Math.PI + 360) % 360;
+      const weight = Math.min(1, meanWeight * 4);
+      return { hue, weight };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Analyze and cache a tile's image for both luminance (title backdrop theme)
+   * and dominant hue (background-color nudge). Both share the same CORS gate —
+   * only iTunes/Apple CDN supports CORS for arbitrary origins; Discogs and
+   * TheAudioDB don't. For non-CORS sources we skip analysis (default luminance
+   * to false / dark; hue to null / no contribution).
    * @param {string} imageUrl - The image URL to analyze
    * @param {string} artistName - Artist name for cache key
    * @param {string} source - Image source identifier (ITUNES, DISCOGS, THE_AUDIO_DB)
@@ -1377,8 +1514,10 @@
       if (supportsCors) {
         const corsImg = await loadImageForCanvas(imageUrl);
         luminanceCache[cacheKey] = corsImg ? isImageLight(corsImg) : false;
+        hueCache[cacheKey] = corsImg ? extractTileHue(corsImg) : null;
       } else {
         luminanceCache[cacheKey] = false;
+        hueCache[cacheKey] = null;
       }
     }
   }
@@ -1399,6 +1538,27 @@
     } else {
       tile.classList.remove('light-image');
     }
+  }
+
+  /**
+   * Record this tile's contribution (if any) to the background hue blend.
+   * Only called when a tile's *visible* image changes (first reveal, or a
+   * fallback-upgrade swap) — NOT on auto-rotation, so the background stays
+   * stable while tiles cycle visually.
+   */
+  function recordTileHueContribution(tile, source) {
+    const artistName = tile.dataset.artist;
+    if (!artistName) return;
+    const cached = hueCache[`${artistName}:${source}`];
+    tileHueContributions[artistName] = cached || null;
+  }
+
+  /**
+   * Snapshot the current image hue contributions for use by generateBlendedColor.
+   * Returns an array of { hue, weight } for tiles whose images carry a usable hue.
+   */
+  function getCurrentImageHues() {
+    return Object.values(tileHueContributions).filter((c) => c && typeof c.hue === 'number');
   }
 
   /**
@@ -1515,6 +1675,8 @@
       tile.classList.add('image-loaded');
       // Apply adaptive title theme based on image luminance
       applyTitleTheme(tile, bestSource);
+      // Capture this tile's hue contribution for the background blend
+      recordTileHueContribution(tile, bestSource);
     } else {
       tile.classList.add('no-image');
       tile.classList.remove('light-image');
@@ -1578,7 +1740,9 @@
               resolve(imageCache[`${artistName}:MB_DATA`]);
               return;
             }
+            const mbStart = performance.now();
             const data = await getMusicBrainzData(artistName, artistMbid);
+            recordPersonalityCall(artistName, 'MusicBrainz', performance.now() - mbStart);
             const result = { mbid: data.mbid, discogsId: data.discogsId };
             imageCache[`${artistName}:MB_DATA`] = result;
             resolve(result);
@@ -1631,11 +1795,15 @@
         data = { ...personalityCache[artist.name], playcount: parseInt(artist.playcount, 10) || 1 };
       } else {
         // Wait for this artist's MB data (resolves as soon as this artist's MB call completes)
+        const mbWaitStart = performance.now();
         const mbData = await getMbDataForArtist(artist.name);
+        recordPersonalityCall(artist.name, 'MB wait+actual', performance.now() - mbWaitStart);
 
         // Fetch from TheAudioDB if we have MBID
         if (mbData.mbid) {
+          const adbStart = performance.now();
           const audioDbData = await fetchAudioDBData(mbData.mbid);
+          recordPersonalityCall(artist.name, 'AudioDB', performance.now() - adbStart);
           data = {
             name: artist.name,
             genre: audioDbData.genre,
@@ -1662,6 +1830,8 @@
 
     // Personality analysis runs concurrently with image fetching
     const personalityPromise = Promise.all(personalityDataPromises).then(async (personalityData) => {
+      markPersonalityTiming('T3 per-artist enrichment settled');
+      dumpPersonalityCallTimings();
       const validData = personalityData.filter((d) => d.genre || d.style || d.mood);
       if (validData.length > 0) {
         const finalMoodCounts = {};
@@ -1687,7 +1857,7 @@
         const analysis = await analyzePersonality(validData, headlineRandom);
         displayPersonality(analysis.headline);
         const colorRandom = currentPersonalitySeed ? createSeededRandom(currentPersonalitySeed + 2000) : null;
-        animateBackgroundColor(generateBlendedColor(colorRandom, finalMoodWeights));
+        animateBackgroundColor(generateBlendedColor(colorRandom, finalMoodWeights, undefined, getCurrentImageHues()));
 
         return { hasPersonality: true };
       }
@@ -1758,9 +1928,10 @@
       }
 
       const confidence = loadedArtistNames.length / totalArtists;
-      animateBackgroundColor(generateBlendedColor(progressiveRandom, moodWeights, confidence), {
-        duration: 2.5
-      });
+      animateBackgroundColor(
+        generateBlendedColor(progressiveRandom, moodWeights, confidence, getCurrentImageHues()),
+        { duration: 2.5 }
+      );
     }
 
     // Mark all tiles as loading
@@ -1826,6 +1997,12 @@
 
     // Ensure personality analysis completes before we return
     await personalityPromise;
+
+    // All tiles have revealed and contributed their image hues. Force one final
+    // color update so the settled background includes the full hue contribution
+    // set — covering the case where the personality-driven settled color at
+    // line 1690 fired before tiles had finished revealing.
+    tryProgressiveColorUpdate(true);
   }
 
   /**
@@ -1959,6 +2136,9 @@
    * Fetch and display top artists for a user
    */
   async function loadUser(username) {
+    personalityTimingStart = performance.now();
+    personalityCallTimings.length = 0;
+    markPersonalityTiming('T0 loadUser called');
     const sanitizedUsername = sanitize(username);
 
     // Stop any existing auto-rotation and reset available sources
@@ -1981,6 +2161,7 @@
     try {
       const response = await fetch(apiUrl);
       const data = await response.json();
+      markPersonalityTiming('T1 lastfm topartists returned');
 
       // Stop timeout for delay in showing personality loading state
       if (showPersonalityLoadingTimeout) {
@@ -2192,7 +2373,9 @@
       availableSources.splice(insertIndex, 0, source);
 
       // If this source is the currently selected primary source,
-      // update any tiles that were showing loading state
+      // update any tiles that were showing loading state — and also any tiles
+      // already revealed whose visible source should upgrade now that a better
+      // fallback is available.
       const currentPrimarySource = CONFIG.imageSources[0];
       if (source === currentPrimarySource && currentArtists.length > 0) {
         const tiles = document.querySelectorAll('.artist');
@@ -2200,14 +2383,26 @@
           const tile = Array.from(tiles).find((t) => t.dataset.artist === artist.name);
           if (!tile) continue;
 
-          // Only update tiles that are in loading state
+          const bestSource = getBestSourceForTile(tile, currentPrimarySource, true);
+          if (!bestSource) continue;
+
           if (tile.classList.contains('loading-image') || tile.classList.contains('loading-active')) {
-            const bestSource = getBestSourceForTile(tile, currentPrimarySource, true);
-            if (bestSource) {
+            // Loading tile: reveal it now that we have an image.
+            showSourceLayer(tile, bestSource);
+            tile.classList.remove('loading-image', 'loading-active', 'no-image');
+            tile.classList.add('image-loaded');
+            applyTitleTheme(tile, bestSource);
+            recordTileHueContribution(tile, bestSource);
+          } else if (tile.classList.contains('image-loaded')) {
+            // Already-revealed tile: only act if the visible source actually
+            // changes — otherwise the title theme stays stuck to the previously
+            // cached luminance (the bug we're fixing here).
+            const activeLayer = tile.querySelector('.source-layer.active');
+            const currentVisible = activeLayer ? activeLayer.dataset.source : null;
+            if (currentVisible !== bestSource) {
               showSourceLayer(tile, bestSource);
-              tile.classList.remove('loading-image', 'loading-active', 'no-image');
-              tile.classList.add('image-loaded');
               applyTitleTheme(tile, bestSource);
+              recordTileHueContribution(tile, bestSource);
             }
           }
         }

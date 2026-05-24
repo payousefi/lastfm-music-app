@@ -6,8 +6,12 @@
 const express = require('express');
 const config = require('../../config');
 const { validateParam, isValidMBID } = require('../../middleware/security');
+const responseCache = require('../../utils/responseCache');
 
 const router = express.Router();
+
+const ARTIST_TTL_MS = 7 * 24 * 60 * 60 * 1000;   // in-process cache: long, genre/style/mood rarely change
+const BROWSER_MAX_AGE_S = 60 * 60;               // Cache-Control: short, so we can bust quickly
 
 /**
  * GET /api/audiodb/artist/:mbid
@@ -19,6 +23,13 @@ router.get(
   async (req, res) => {
     try {
       const { mbid } = req.params;
+
+      const cacheKey = `adb:artist:${mbid.toLowerCase()}`;
+      const cached = responseCache.get(cacheKey);
+      if (cached) {
+        res.set('Cache-Control', `public, max-age=${BROWSER_MAX_AGE_S}`);
+        return res.json(cached);
+      }
 
       const url = `${config.audiodb.baseUrl}/artist-mb.php?i=${mbid}`;
 
@@ -59,6 +70,8 @@ router.get(
       }
 
       const data = await response.json();
+      responseCache.set(cacheKey, data, ARTIST_TTL_MS);
+      res.set('Cache-Control', `public, max-age=${BROWSER_MAX_AGE_S}`);
       res.json(data);
     } catch (error) {
       console.error('TheAudioDB API error:', error);
