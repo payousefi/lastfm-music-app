@@ -7,7 +7,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "build": "node scripts/build.js",
-    "screenshots": "node scripts/screenshots.js"
+    "screenshots": "node scripts/screenshots.js",
+    "screenshots:demo": "node scripts/screenshots-demo.js"
   },
   "keywords": [
     "lastfm",

@@ -530,6 +530,7 @@ const MOOD_MAP = {
   exuberant: 'happy',
   gleeful: 'happy',
   blissful: 'happy',
+  quirky: 'happy',
 
   // Sad family
   sad: 'sad',
@@ -568,6 +569,7 @@ const MOOD_MAP = {
   bitter: 'angry',
   raw: 'angry',
   brutal: 'angry',
+  gritty: 'angry',
 
   // Relaxed family
   relaxed: 'relaxed',
@@ -588,6 +590,7 @@ const MOOD_MAP = {
   ethereal: 'relaxed',
   meditative: 'relaxed',
   contemplative: 'relaxed',
+  hypnotic: 'relaxed',
 
   // Energetic family
   energetic: 'energetic',
@@ -608,6 +611,9 @@ const MOOD_MAP = {
   exhilarating: 'energetic',
   urgent: 'energetic',
   restless: 'energetic',
+  rousing: 'energetic',
+  excitable: 'energetic',
+  epic: 'energetic',
 
   // Dark family
   dark: 'dark',
@@ -627,7 +633,8 @@ const MOOD_MAP = {
   nocturnal: 'dark',
   cryptic: 'dark',
   foreboding: 'dark',
-  menacing: 'dark'
+  menacing: 'dark',
+  trippy: 'dark'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

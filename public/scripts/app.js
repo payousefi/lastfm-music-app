@@ -587,6 +587,58 @@
     }
   };
 
+  // Mood synonyms → canonical MOOD_COLORS bucket.
+  // Mirrors MOOD_MAP in server/services/personality.js. TheAudioDB returns
+  // Title-Case mood strings (e.g. "Dreamy", "Moody", "Sad", "Confrontational")
+  // that don't match MOOD_COLORS keys directly — normalizeMood lowercases the
+  // raw value and routes it through this map before lookup. Keep both maps in
+  // sync when adding synonyms.
+  const MOOD_NORMALIZE = {
+    // happy
+    happy: 'happy', joyful: 'happy', cheerful: 'happy', uplifting: 'happy',
+    upbeat: 'happy', euphoric: 'happy', elated: 'happy', optimistic: 'happy',
+    playful: 'happy', fun: 'happy', celebratory: 'happy', triumphant: 'happy',
+    bright: 'happy', sunny: 'happy', positive: 'happy', exuberant: 'happy',
+    gleeful: 'happy', blissful: 'happy', quirky: 'happy',
+    // sad
+    sad: 'sad', melancholic: 'sad', melancholy: 'sad', sorrowful: 'sad',
+    mournful: 'sad', heartbroken: 'sad', lonely: 'sad', longing: 'sad',
+    wistful: 'sad', bittersweet: 'sad', nostalgic: 'sad', reflective: 'sad',
+    yearning: 'sad', grieving: 'sad', depressed: 'sad', blue: 'sad',
+    pensive: 'sad', tender: 'sad',
+    // angry
+    angry: 'angry', aggressive: 'angry', intense: 'angry', fierce: 'angry',
+    furious: 'angry', rebellious: 'angry', defiant: 'angry', confrontational: 'angry',
+    hostile: 'angry', violent: 'angry', rage: 'angry', raging: 'angry',
+    hateful: 'angry', bitter: 'angry', raw: 'angry', brutal: 'angry',
+    gritty: 'angry',
+    // relaxed
+    relaxed: 'relaxed', calm: 'relaxed', peaceful: 'relaxed', serene: 'relaxed',
+    tranquil: 'relaxed', mellow: 'relaxed', soothing: 'relaxed', gentle: 'relaxed',
+    soft: 'relaxed', easy: 'relaxed', 'laid-back': 'relaxed', chill: 'relaxed',
+    ambient: 'relaxed', quiet: 'relaxed', dreamy: 'relaxed', ethereal: 'relaxed',
+    meditative: 'relaxed', contemplative: 'relaxed', hypnotic: 'relaxed',
+    // energetic
+    energetic: 'energetic', exciting: 'energetic', dynamic: 'energetic',
+    powerful: 'energetic', driving: 'energetic', pumping: 'energetic',
+    electric: 'energetic', vibrant: 'energetic', lively: 'energetic',
+    spirited: 'energetic', passionate: 'energetic', fiery: 'energetic',
+    wild: 'energetic', hyper: 'energetic', thrilling: 'energetic',
+    exhilarating: 'energetic', urgent: 'energetic', restless: 'energetic',
+    rousing: 'energetic', excitable: 'energetic', epic: 'energetic',
+    // dark
+    dark: 'dark', brooding: 'dark', moody: 'dark', mysterious: 'dark',
+    haunting: 'dark', eerie: 'dark', ominous: 'dark', sinister: 'dark',
+    gothic: 'dark', somber: 'dark', gloomy: 'dark', bleak: 'dark',
+    atmospheric: 'dark', shadowy: 'dark', nocturnal: 'dark', cryptic: 'dark',
+    foreboding: 'dark', menacing: 'dark', trippy: 'dark'
+  };
+
+  function normalizeMood(rawMood) {
+    if (!rawMood || typeof rawMood !== 'string') return null;
+    return MOOD_NORMALIZE[rawMood.trim().toLowerCase()] || null;
+  }
+
   /**
    * Generate a blended HSL color from weighted mood proportions.
    * Instead of picking a single dominant mood (which causes jarring hue jumps),
@@ -1615,9 +1667,10 @@
         const finalMoodCounts = {};
         let finalMoodTotal = 0;
         for (const d of validData) {
-          if (d.mood) {
+          const normalized = normalizeMood(d.mood);
+          if (normalized) {
             const pc = d.playcount || 1;
-            finalMoodCounts[d.mood] = (finalMoodCounts[d.mood] || 0) + pc;
+            finalMoodCounts[normalized] = (finalMoodCounts[normalized] || 0) + pc;
             finalMoodTotal += pc;
           }
         }
@@ -1688,9 +1741,10 @@
       const moodCounts = {};
       let moodTotal = 0;
       for (const d of availablePersonalityData) {
-        if (d.mood) {
+        const normalized = normalizeMood(d.mood);
+        if (normalized) {
           const pc = d.playcount || 1;
-          moodCounts[d.mood] = (moodCounts[d.mood] || 0) + pc;
+          moodCounts[normalized] = (moodCounts[normalized] || 0) + pc;
           moodTotal += pc;
         }
       }

@@ -11,9 +11,25 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist', 'music');
+
+// Assets that get content-hashed for cache busting.
+// Each is identified by its source path (relative to dist) and the literal
+// URL string used to reference it from the HTML template. Hash is appended
+// before the extension (e.g. app.js → app.abc12345.js) and the template is
+// rewritten to point at the new name. Favicon and PWA icons are intentionally
+// excluded — browsers look up favicon.ico by literal name and PWA icons rarely
+// churn.
+const HASHABLE_ASSETS = [
+  { distPath: 'public/scripts/app.js', htmlRef: '/scripts/app.js' },
+  { distPath: 'public/stylesheets/main.css', htmlRef: '/stylesheets/main.css' },
+  { distPath: 'public/stylesheets/reset.css', htmlRef: '/stylesheets/reset.css' }
+];
+
+const TEMPLATE_REL_PATH = 'server/templates/index.html';
 
 // Files and directories to include in the build
 const INCLUDE = [
@@ -112,6 +128,53 @@ function copyHtaccess() {
 }
 
 /**
+ * Hash listed assets in dist and rewrite their references in the HTML template.
+ * Renames each asset to `<basename>.<hash><ext>` (8-char sha256 prefix), then
+ * replaces every occurrence of the original URL in the template with the
+ * hashed URL. The dev workflow (`npm run dev`) does not run build, so source
+ * files keep their original names locally — the rename only happens in dist.
+ */
+function hashAndRewriteAssets() {
+  const templateFullPath = path.join(DIST, TEMPLATE_REL_PATH);
+  if (!fs.existsSync(templateFullPath)) {
+    console.log(`  ⚠ Template not found at ${TEMPLATE_REL_PATH} — skipping asset hashing`);
+    return;
+  }
+
+  let template = fs.readFileSync(templateFullPath, 'utf8');
+
+  for (const { distPath, htmlRef } of HASHABLE_ASSETS) {
+    const fullPath = path.join(DIST, distPath);
+    if (!fs.existsSync(fullPath)) {
+      console.log(`  ⚠ ${distPath} not found in dist — skipping`);
+      continue;
+    }
+
+    const content = fs.readFileSync(fullPath);
+    const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 8);
+
+    const ext = path.extname(fullPath);
+    const base = path.basename(fullPath, ext);
+    const newName = `${base}.${hash}${ext}`;
+    const newFullPath = path.join(path.dirname(fullPath), newName);
+    fs.renameSync(fullPath, newFullPath);
+
+    // E.g. "/scripts/app.js" → "/scripts/app.abc12345.js"
+    const newHtmlRef = htmlRef.replace(path.basename(htmlRef), newName);
+
+    if (!template.includes(htmlRef)) {
+      console.log(`  ⚠ ${htmlRef} not found in template — hash applied but unreferenced`);
+    }
+    template = template.split(htmlRef).join(newHtmlRef);
+
+    console.log(`  ✓ ${path.basename(distPath)} → ${newName}`);
+  }
+
+  fs.writeFileSync(templateFullPath, template);
+  console.log(`  ✓ Rewrote ${TEMPLATE_REL_PATH} with hashed references`);
+}
+
+/**
  * Ensure start.sh is executable in dist
  */
 function ensureStartScriptExecutable() {
@@ -154,6 +217,11 @@ function build() {
     }
     console.log(`  ✓ Copied ${item}`);
   }
+  console.log('');
+
+  // Hash static assets and rewrite template references
+  console.log('Hashing static assets...');
+  hashAndRewriteAssets();
   console.log('');
 
   // Create production files
